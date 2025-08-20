@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { jobDescriptions, JobDescription } from '../mock/jobDescriptions';
 import JobButton from '../components/JobButton';
 import JobDescriptionBox from '../components/JobDescriptionBox';
 import UploadSection from '../components/UploadSection';
 
 export default function Home() {
+    const router = useRouter();
     const [selectedJob, setSelectedJob] = useState<string>(
         'Human Resources Specialist'
     );
@@ -27,12 +29,13 @@ export default function Home() {
     };
 
     const handleGenerateQuestions = () => {
-        // This would typically call an API to generate questions
-        console.log('Generating questions for:', selectedJob);
-        console.log('Job Description:', jobDescription.roleSummary);
-        alert(
-            'Questions generation feature would be implemented here! The system would analyze the job description you provided to generate tailored interview questions.'
-        );
+        // Navigate to the questions page with job information
+        const params = new URLSearchParams({
+            job: selectedJob,
+            description: jobDescription.roleSummary,
+        });
+
+        router.push(`/questions?${params.toString()}`);
     };
 
     return (
