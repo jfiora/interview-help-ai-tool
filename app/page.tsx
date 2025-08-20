@@ -29,7 +29,10 @@ export default function Home() {
     const handleGenerateQuestions = () => {
         // This would typically call an API to generate questions
         console.log('Generating questions for:', selectedJob);
-        alert('Questions generation feature would be implemented here!');
+        console.log('Job Description:', jobDescription.roleSummary);
+        alert(
+            'Questions generation feature would be implemented here! The system would analyze the job description you provided to generate tailored interview questions.'
+        );
     };
 
     return (

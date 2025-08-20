@@ -9,7 +9,7 @@ export default function JobDescriptionBox({
     jobDescription,
     onDescriptionChange,
 }: JobDescriptionBoxProps) {
-    const maxChars = 5000;
+    const maxChars = 5000; // Increased character limit for full job descriptions
     const currentChars = jobDescription.roleSummary.length;
     const remainingChars = maxChars - currentChars;
 
@@ -20,45 +20,51 @@ export default function JobDescriptionBox({
                 {jobDescription.title}
             </h2>
 
-            {/* Role Summary */}
+            {/* Full Job Description Textarea */}
             <div className='mb-4'>
                 <label
-                    htmlFor='roleSummary'
+                    htmlFor='fullJobDescription'
                     className='block text-sm font-medium text-gray-700 mb-2'
                 >
-                    Role Summary:
+                    Job Description:
                 </label>
                 <textarea
-                    id='roleSummary'
+                    id='fullJobDescription'
                     value={jobDescription.roleSummary}
                     onChange={(e) => onDescriptionChange(e.target.value)}
-                    className='w-full h-32 p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-primary focus:border-transparent'
-                    placeholder='Enter the role summary...'
+                    className='w-full h-64 p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm'
+                    placeholder={`Enter the complete job description here. For example:
+
+Job Title: Data Analyst
+
+Role Summary: We are seeking a Data Analyst to join our team. This entry-to-mid-level position is a wonderful opportunity for those who are passionate about data-driven insights and are looking to broaden their experience in data analysis.
+
+Responsibilities:
+- Interpret data and analyze results using statistical techniques.
+- Identify, analyze, and interpret trends or patterns in complex data sets.
+- Develop and implement data collection systems and other strategies that optimize statistical efficiency and data quality.
+- Work with management to prioritize business and information needs.
+- Transform raw data into useful information using data-driven techniques.
+- Collaborate with teams to implement strategies based on data analysis.
+
+Requirements:
+- Degree in Statistics, Mathematics, Computer Science, Information Systems, Economics, or a related field.
+- 0-3 years of experience in data analysis or a related field.
+- Strong analytical skills with the ability to collect, organize, analyze, and disseminate significant amounts of information with attention to detail and accuracy.
+- Familiarity with data visualization tools and techniques.
+- Proficient in SQL and understanding of relational databases.
+- Excellent written and verbal communication skills.
+- Ability to work independently and with team members from different backgrounds.
+- Highly organized, detail-oriented, and proactive.`}
                     maxLength={maxChars}
                 />
-            </div>
-
-            {/* Responsibilities */}
-            <div className='mb-4'>
-                <h3 className='text-sm font-medium text-gray-700 mb-2'>
-                    Responsibilities:
-                </h3>
-                <ul className='list-disc list-inside space-y-1'>
-                    {jobDescription.responsibilities.map(
-                        (responsibility, index) => (
-                            <li key={index} className='text-sm text-gray-600'>
-                                {responsibility}
-                            </li>
-                        )
-                    )}
-                </ul>
             </div>
 
             {/* Character Count */}
             <div className='text-right'>
                 <span
                     className={`text-sm ${
-                        remainingChars < 100 ? 'text-red-500' : 'text-gray-500'
+                        remainingChars < 200 ? 'text-red-500' : 'text-gray-500'
                     }`}
                 >
                     {remainingChars} chars left

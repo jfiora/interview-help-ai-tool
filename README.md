@@ -5,7 +5,8 @@ A Next.js application that allows users to select job descriptions and generate 
 ## Features
 
 -   **Job Selection Grid**: Click on different job titles to select them
--   **Editable Job Descriptions**: Modify job descriptions with a character limit counter
+-   **Comprehensive Job Description Editor**: Single textarea for complete job descriptions including title, summary, responsibilities, and requirements
+-   **Copy & Paste Support**: Easily copy real job postings from external sources
 -   **Responsive Design**: Works on desktop and mobile devices
 -   **Pro Member Features**: Resume upload functionality (requires Pro membership)
 -   **Modern UI**: Clean, professional interface with smooth interactions
@@ -61,10 +62,10 @@ interview-help-ai-tool/
 │   └── page.tsx           # Main page component
 ├── components/             # Reusable components
 │   ├── JobButton.tsx      # Job selection button
-│   ├── JobDescriptionBox.tsx # Job description display/editor
+│   ├── JobDescriptionBox.tsx # Comprehensive job description editor
 │   └── UploadSection.tsx  # Resume upload section
 ├── mock/                   # Mock data
-│   └── jobDescriptions.ts # Job descriptions data
+│   └── jobDescriptions.ts # Comprehensive job descriptions with requirements
 ├── package.json           # Dependencies and scripts
 ├── tailwind.config.js     # Tailwind CSS configuration
 ├── tsconfig.json          # TypeScript configuration
@@ -81,10 +82,12 @@ interview-help-ai-tool/
 
 ### JobDescriptionBox
 
--   Displays selected job description
--   Editable role summary with character counter
--   Shows responsibilities list
--   5000 character limit
+-   **Single comprehensive textarea** for complete job descriptions
+-   **Copy & paste friendly** - easily paste real job postings
+-   **Includes all sections**: Job Title, Role Summary, Responsibilities, Requirements
+-   **10,000 character limit** for detailed descriptions
+-   **Monospace font** for better formatting preservation
+-   **Character counter** with visual feedback
 
 ### UploadSection
 
@@ -94,36 +97,74 @@ interview-help-ai-tool/
 
 ## Data Structure
 
-Job descriptions are stored in `mock/jobDescriptions.ts` with the following structure:
+Job descriptions are stored in `mock/jobDescriptions.ts` with comprehensive content:
 
 ```typescript
 interface JobDescription {
     title: string;
-    roleSummary: string;
-    responsibilities: string[];
+    roleSummary: string; // Full job description including all sections
+    responsibilities: string[]; // Legacy field, not used in new UI
 }
 ```
 
 ## Available Jobs
 
--   Custom Job Description
--   Business Analyst
--   Product Manager
--   Software Engineer
--   Marketing Specialist
--   Data Analyst
--   Customer Service Representative
--   Sales Representative
--   Human Resources Specialist
--   UX/UI Designer
--   QA Engineer
+Each job comes with a comprehensive template including:
+
+-   **Custom Job Description** - Template for custom roles
+-   **Business Analyst** - Complete BA job description with requirements
+-   **Product Manager** - Full PM role description and qualifications
+-   **Software Engineer** - Comprehensive SE job posting
+-   **Marketing Specialist** - Detailed marketing role description
+-   **Data Analyst** - Full DA job description with technical requirements
+-   **Customer Service Representative** - Complete CSR role description
+-   **Sales Representative** - Comprehensive sales role posting
+-   **Human Resources Specialist** - Full HR role description
+-   **UX/UI Designer** - Complete design role with requirements
+-   **QA Engineer** - Comprehensive QA role description
+
+## Usage
+
+### Selecting a Job
+
+1. Click on any job title button to select it
+2. The comprehensive job description will appear in the textarea below
+3. You can edit the description directly in the textarea
+
+### Adding Your Own Job Description
+
+1. Select "Custom Job Description" or any existing job
+2. **Copy and paste** a real job posting from external sources
+3. **Edit as needed** to match your specific requirements
+4. The system will analyze the complete description to generate tailored questions
+
+### Job Description Format
+
+The textarea supports any format, but recommended structure includes:
+
+```
+Job Title: [Position Name]
+
+Role Summary: [Brief overview of the role]
+
+Responsibilities:
+- [Key responsibility 1]
+- [Key responsibility 2]
+- [Key responsibility 3]
+
+Requirements:
+- [Requirement 1]
+- [Requirement 2]
+- [Requirement 3]
+```
 
 ## Customization
 
 ### Adding New Jobs
 
 1. Add a new job description to `mock/jobDescriptions.ts`
-2. The job will automatically appear in the selection grid
+2. Include a comprehensive description in the `roleSummary` field
+3. The job will automatically appear in the selection grid
 
 ### Styling
 
@@ -135,6 +176,7 @@ interface JobDescription {
 
 -   Modify `app/page.tsx` to add new features
 -   Update the `handleGenerateQuestions` function to integrate with AI services
+-   The system now captures the complete job description for better question generation
 
 ## Build and Deployment
 
