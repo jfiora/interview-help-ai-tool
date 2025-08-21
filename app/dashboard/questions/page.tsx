@@ -20,6 +20,7 @@ export default function QuestionsPage() {
     const [isGeneratingAnswers, setIsGeneratingAnswers] = useState(false);
     const [sessionSaved, setSessionSaved] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [sessionKey, setSessionKey] = useState<string | null>(null);
 
     const {
         questions: generatedQuestions,
@@ -32,22 +33,38 @@ export default function QuestionsPage() {
     const { createSession, saveQuestions, saveAnswers } = useSessions();
 
     useEffect(() => {
-        if (jobTitle && jobDescription) {
+        if (jobTitle && jobDescription && !hasGeneratedQuestions) {
+            // Create a unique session key to prevent duplicates
+            const newSessionKey = `${jobTitle}-${jobDescription.substring(
+                0,
+                50
+            )}-${Date.now()}`;
+
+            // Check if this session was already created (browser back/forward)
+            const existingSessionKey =
+                localStorage.getItem('currentSessionKey');
+            if (existingSessionKey === newSessionKey) {
+                setIsInitialLoading(false);
+                return;
+            }
+
+            localStorage.setItem('currentSessionKey', newSessionKey);
+            setSessionKey(newSessionKey);
             handleGenerateQuestions();
         } else {
             setIsInitialLoading(false);
         }
-    }, [jobTitle, jobDescription]);
+    }, [jobTitle, jobDescription, hasGeneratedQuestions]);
 
     useEffect(() => {
-        if (generatedQuestions.length > 0) {
+        if (generatedQuestions.length > 0 && !hasGeneratedQuestions) {
             setQuestions(generatedQuestions);
             setHasGeneratedQuestions(true);
             setIsInitialLoading(false);
-            // Automatically generate answers for all questions
+            // Automatically generate answers for all questions only once
             generateAnswersForAllQuestions(generatedQuestions);
         }
-    }, [generatedQuestions]);
+    }, [generatedQuestions, hasGeneratedQuestions]);
 
     const handleGenerateQuestions = async () => {
         try {
@@ -81,7 +98,8 @@ export default function QuestionsPage() {
     const generateAnswersForAllQuestions = async (
         questionsList: GeneratedQuestion[]
     ) => {
-        if (questionsList.length === 0) return;
+        if (questionsList.length === 0 || isGeneratingAnswers || sessionSaved)
+            return;
 
         setIsGeneratingAnswers(true);
         try {
@@ -153,8 +171,16 @@ export default function QuestionsPage() {
         questionsList: GeneratedQuestion[],
         answersList: GeneratedAnswer[]
     ) => {
+        // Prevent duplicate session creation with multiple checks
+        if (sessionSaved || sessionId || !sessionKey) {
+            return;
+        }
+
         try {
-            // Create session
+            // Mark as saving immediately to prevent race conditions
+            setSessionSaved(true);
+
+            // Create session with session key identifier
             const sessionName = `${jobTitle} - ${new Date().toLocaleDateString()}`;
             const session = await createSession({
                 session_name: sessionName,
@@ -172,10 +198,13 @@ export default function QuestionsPage() {
                 // Save answers
                 await saveAnswers(session.id, answersList);
 
-                setSessionSaved(true);
+                // Clear the session key from localStorage after successful save
+                localStorage.removeItem('currentSessionKey');
             }
         } catch (error) {
             console.error('Failed to save session to database:', error);
+            // Reset save state on error to allow retry
+            setSessionSaved(false);
         }
     };
 

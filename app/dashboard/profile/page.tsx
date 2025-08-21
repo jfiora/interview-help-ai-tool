@@ -239,10 +239,6 @@ export default function ProfilePage() {
                                 className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent'
                             >
                                 <option value='gpt-4o-mini'>GPT-4o Mini</option>
-                                <option value='gpt-4-turbo'>GPT-4 Turbo</option>
-                                <option value='gpt-3.5-turbo'>
-                                    GPT-3.5 Turbo
-                                </option>
                             </select>
                         ) : (
                             <div className='text-gray-900'>

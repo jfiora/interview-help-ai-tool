@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         const questions = await generateInterviewQuestions(
             sanitizedTitle,
             sanitizedDescription,
-            model || 'gpt-4-turbo-preview' // Provide default model
+            model || 'gpt-4o-mini' // Provide default model
         );
 
         console.log(

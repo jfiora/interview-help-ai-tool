@@ -238,7 +238,7 @@ export function useSessions(): SessionsState & SessionsActions {
 
             setState((prev) => ({
                 ...prev,
-                currentSession: result.data.session,
+                currentSession: result.data,
                 isLoading: false,
             }));
         } catch (error) {

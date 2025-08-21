@@ -109,7 +109,7 @@ Keep questions focused and relevant.`,
 export async function generateInterviewQuestions(
     jobTitle: string,
     jobDescription: string,
-    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
+    model: AIModel = AI_MODELS.GPT_4O_MINI // Changed default to cheaper model
 ): Promise<GeneratedQuestion[]> {
     try {
         const prompt = PROMPT_TEMPLATES.GENERATE_QUESTIONS.replace(
@@ -198,7 +198,7 @@ export async function generateSampleAnswer(
     question: string,
     questionType: string,
     difficultyLevel: string,
-    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
+    model: AIModel = AI_MODELS.GPT_4O_MINI // Changed default to cheaper model
 ): Promise<GeneratedAnswer> {
     try {
         const prompt = PROMPT_TEMPLATES.GENERATE_ANSWERS.replace(
@@ -290,7 +290,7 @@ export async function generateSampleAnswer(
 
 export async function improveJobDescription(
     jobDescription: string,
-    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
+    model: AIModel = AI_MODELS.GPT_4O_MINI // Changed default to cheaper model
 ): Promise<string> {
     try {
         const prompt = PROMPT_TEMPLATES.IMPROVE_JOB_DESCRIPTION.replace(
@@ -335,7 +335,7 @@ export async function generateFollowUpQuestions(
     originalQuestion: string,
     candidateAnswer: string,
     jobTitle: string,
-    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
+    model: AIModel = AI_MODELS.GPT_4O_MINI // Changed default to cheaper model
 ): Promise<FollowUpQuestion[]> {
     try {
         const prompt = PROMPT_TEMPLATES.GENERATE_FOLLOW_UP_QUESTIONS.replace(

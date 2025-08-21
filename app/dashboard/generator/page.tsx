@@ -14,6 +14,7 @@ export default function QAGenerator() {
     const [jobDescription, setJobDescription] = useState(
         jobDescriptions['Full Stack Developer']
     );
+    const [isGenerating, setIsGenerating] = useState(false);
 
     const handleJobSelect = (jobTitle: string) => {
         setSelectedJob(jobTitle);
@@ -28,6 +29,9 @@ export default function QAGenerator() {
     };
 
     const handleGenerateQuestions = () => {
+        if (isGenerating) return; // Prevent multiple clicks
+
+        setIsGenerating(true);
         const params = new URLSearchParams({
             job: selectedJob,
             description: jobDescription.roleSummary,
@@ -89,7 +93,8 @@ export default function QAGenerator() {
             <div className='text-center'>
                 <button
                     onClick={handleGenerateQuestions}
-                    className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 flex items-center mx-auto text-lg'
+                    disabled={isGenerating}
+                    className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 flex items-center mx-auto text-lg disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                     <Sparkles className='w-5 h-5 mr-2' />
                     Generate Questions & Answers

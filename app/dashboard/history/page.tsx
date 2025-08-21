@@ -29,7 +29,7 @@ export default function HistoryPage() {
 
     useEffect(() => {
         listSessions(currentPage, 10);
-    }, [currentPage, listSessions]);
+    }, [currentPage]);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -59,10 +59,6 @@ export default function HistoryPage() {
             hour: '2-digit',
             minute: '2-digit',
         });
-    };
-
-    const formatCost = (cost: number) => {
-        return `$${cost.toFixed(4)}`;
     };
 
     if (isLoading && sessions.length === 0) {
@@ -158,16 +154,13 @@ export default function HistoryPage() {
                                         <h3 className='text-lg font-semibold text-gray-900'>
                                             {session.session_name}
                                         </h3>
-                                        <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800'>
-                                            {session.model_used}
-                                        </span>
                                     </div>
 
                                     <p className='text-gray-600 mb-4'>
                                         {session.job_title}
                                     </p>
 
-                                    <div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-sm'>
+                                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
                                         <div className='flex items-center text-gray-500'>
                                             <Calendar className='w-4 h-4 mr-2' />
                                             <span>
@@ -185,14 +178,6 @@ export default function HistoryPage() {
                                             <Clock className='w-4 h-4 mr-2' />
                                             <span>
                                                 {session.total_answers} answers
-                                            </span>
-                                        </div>
-                                        <div className='flex items-center text-gray-500'>
-                                            <DollarSign className='w-4 h-4 mr-2' />
-                                            <span>
-                                                {formatCost(
-                                                    session.estimated_cost
-                                                )}
                                             </span>
                                         </div>
                                     </div>
