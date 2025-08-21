@@ -13,16 +13,21 @@ A Next.js application that allows users to select job descriptions and generate 
 
 ## Technology Stack
 
--   **Frontend**: Next.js 14 with TypeScript
+-   **Frontend**: Next.js 15.5.0 with TypeScript
+-   **React**: React 19 with new Concurrent Features
 -   **Styling**: Tailwind CSS
--   **State Management**: React hooks (useState)
+-   **Authentication**: Clerk (Google & LinkedIn OAuth)
+-   **Database**: Supabase (PostgreSQL)
+-   **AI Integration**: OpenAI GPT-4o-mini
+-   **Icons**: Lucide React
+-   **State Management**: React hooks (useState, useEffect)
 -   **Build Tool**: Next.js built-in bundler
 
 ## Getting Started
 
 ### Prerequisites
 
--   Node.js 18+
+-   Node.js 20+ (recommended for Supabase compatibility)
 -   npm or yarn
 
 ### Installation

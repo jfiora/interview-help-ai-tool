@@ -1,13 +1,13 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useQuestionGeneration } from '../../hooks/useAI';
 import { useSessions } from '../../hooks/useSessions';
 import { GeneratedQuestion, GeneratedAnswer } from '../../types/openai';
 import Link from 'next/link';
 
-export default function QuestionsPage() {
+function QuestionsPageContent() {
     const searchParams = useSearchParams();
     const jobTitle = searchParams.get('job') || 'Human Resources Specialist';
     const jobDescription = searchParams.get('description') || '';
@@ -536,5 +536,22 @@ export default function QuestionsPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function QuestionsPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+                    <div className='text-center'>
+                        <div className='animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4'></div>
+                        <p className='text-gray-600 text-lg'>Loading...</p>
+                    </div>
+                </div>
+            }
+        >
+            <QuestionsPageContent />
+        </Suspense>
     );
 }

@@ -10,7 +10,7 @@ const supabase = createClient<Database>(
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         // Get the authenticated user
@@ -23,7 +23,7 @@ export async function GET(
             );
         }
 
-        const sessionId = params.id;
+        const { id: sessionId } = await params;
 
         if (!sessionId) {
             return NextResponse.json(
@@ -133,7 +133,7 @@ export async function GET(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         // Get the authenticated user
@@ -142,11 +142,11 @@ export async function DELETE(
         if (!userId) {
             return NextResponse.json(
                 { error: 'Authentication required' },
-                { status: 401 }
+                { status: 500 }
             );
         }
 
-        const sessionId = params.id;
+        const { id: sessionId } = await params;
 
         if (!sessionId) {
             return NextResponse.json(
