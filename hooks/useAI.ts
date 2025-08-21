@@ -11,7 +11,7 @@ import {
 // Fixed Configuration
 // =====================================================
 
-const FIXED_MODEL: AIModel = AI_MODELS.GPT_4_TURBO;
+const FIXED_MODEL: AIModel = AI_MODELS.GPT_4O_MINI; // Using the cheaper GPT-4o-mini model
 const FIXED_TEMPERATURE = 0.7;
 const FIXED_MAX_QUESTIONS = 6;
 

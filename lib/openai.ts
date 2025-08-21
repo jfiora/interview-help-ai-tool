@@ -57,68 +57,49 @@ Return ONLY a JSON array with this exact format:
 
 Question types: technical, behavioral, situational, general
 Difficulty levels: easy, medium, hard
-Categories: Technical Skills, Problem Solving, Communication, Leadership, etc.`,
+Categories: Technical Skills, Problem Solving, Communication, Leadership, etc.
 
-    GENERATE_ANSWERS: `You are an expert interview coach. Based on the following interview question and job context, provide a comprehensive sample answer.
+Keep questions concise and focused.`,
 
-Job Title: {jobTitle}
+    GENERATE_ANSWERS: `Given the following job description for a {jobTitle} role, generate one of the most relevant and challenging technical interview questions that a candidate could be asked. Then, provide a strong sample answer that demonstrates the depth of knowledge, practical experience, and problem-solving ability expected from an ideal candidate. The question should be directly tied to the skills, technologies, and responsibilities in the job description. The answer should showcase best practices, reasoning, and clarity of explanation.
+
+Job Description: {jobDescription}
 Question: {question}
 Question Type: {questionType}
 Difficulty Level: {difficultyLevel}
 
-Provide a sample answer that:
-1. Demonstrates relevant experience and skills
-2. Uses the STAR method for behavioral questions
-3. Shows problem-solving approach for technical questions
-4. Includes specific examples and metrics when possible
-5. Is appropriate for the difficulty level
-
-Format the response as JSON:
+Return ONLY a JSON object with this exact format:
 {
-  "answer_text": "Comprehensive answer here...",
-  "answer_type": "model",
-  "key_points": [
-    "Key point 1",
-    "Key point 2",
-    "Key point 3"
-  ],
-  "tips": "Additional tips for answering this type of question"
-}`,
+  "answer_text": "Concise, focused answer (max 200 words)",
+  "answer_type": "sample",
+  "key_points": ["Key point 1", "Key point 2", "Key point 3"],
+  "tips": "Brief tip for answering this type of question"
+}
 
-    IMPROVE_JOB_DESCRIPTION: `You are an expert HR professional. Review and improve the following job description to make it more comprehensive and professional.
+Keep the answer concise and practical. Focus on demonstrating expertise without being verbose.`,
 
-Current Job Description:
-{jobDescription}
+    IMPROVE_JOB_DESCRIPTION: `Improve this job description to be more specific, engaging, and aligned with current industry standards. Make it concise and focused.
 
-Please improve the description by:
-1. Adding missing sections if needed (Requirements, Experience Level, etc.)
-2. Making responsibilities more specific and actionable
-3. Adding relevant requirements and qualifications
-4. Improving clarity and professional tone
-5. Ensuring it follows standard job posting format
+Job Description: {jobDescription}
 
-Return the improved description in the same format, maintaining the existing structure but enhancing the content.`,
+Return ONLY the improved job description text, no JSON formatting.`,
 
-    GENERATE_FOLLOW_UP_QUESTIONS: `Based on the candidate's answer to the interview question, generate 2-3 follow-up questions to dig deeper.
+    GENERATE_FOLLOW_UP_QUESTIONS: `Based on this interview exchange, generate 2-3 relevant follow-up questions:
 
 Original Question: {originalQuestion}
-Candidate's Answer: {candidateAnswer}
-Job Context: {jobTitle}
+Candidate Answer: {candidateAnswer}
+Job Title: {jobTitle}
 
-Generate follow-up questions that:
-1. Explore specific details mentioned in their answer
-2. Challenge assumptions or test depth of knowledge
-3. Move from general to specific examples
-4. Assess critical thinking and problem-solving skills
-
-Return as JSON array:
+Return ONLY a JSON array with this exact format:
 [
   {
     "question": "Follow-up question text",
     "reasoning": "Why this follow-up question is valuable",
     "difficulty_level": "easy|medium|hard"
   }
-]`,
+]
+
+Keep questions focused and relevant.`,
 } as const;
 
 // =====================================================
@@ -128,7 +109,7 @@ Return as JSON array:
 export async function generateInterviewQuestions(
     jobTitle: string,
     jobDescription: string,
-    model: AIModel = AI_MODELS.GPT_4_TURBO
+    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
 ): Promise<GeneratedQuestion[]> {
     try {
         const prompt = PROMPT_TEMPLATES.GENERATE_QUESTIONS.replace(
@@ -150,7 +131,7 @@ export async function generateInterviewQuestions(
                 },
             ],
             temperature: 0.7,
-            max_tokens: 2000,
+            max_tokens: 1000, // Reduced from 2000
         });
 
         const response = completion.choices[0]?.message?.content;
@@ -217,7 +198,7 @@ export async function generateSampleAnswer(
     question: string,
     questionType: string,
     difficultyLevel: string,
-    model: AIModel = AI_MODELS.GPT_4_TURBO
+    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
 ): Promise<GeneratedAnswer> {
     try {
         const prompt = PROMPT_TEMPLATES.GENERATE_ANSWERS.replace(
@@ -242,7 +223,7 @@ export async function generateSampleAnswer(
                 },
             ],
             temperature: 0.7,
-            max_tokens: 1500,
+            max_tokens: 800, // Reduced from 1500
         });
 
         const response = completion.choices[0]?.message?.content;
@@ -309,7 +290,7 @@ export async function generateSampleAnswer(
 
 export async function improveJobDescription(
     jobDescription: string,
-    model: AIModel = AI_MODELS.GPT_4_TURBO
+    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
 ): Promise<string> {
     try {
         const prompt = PROMPT_TEMPLATES.IMPROVE_JOB_DESCRIPTION.replace(
@@ -354,7 +335,7 @@ export async function generateFollowUpQuestions(
     originalQuestion: string,
     candidateAnswer: string,
     jobTitle: string,
-    model: AIModel = AI_MODELS.GPT_4_TURBO
+    model: AIModel = AI_MODELS.GPT_3_5_TURBO // Changed default to cheaper model
 ): Promise<FollowUpQuestion[]> {
     try {
         const prompt = PROMPT_TEMPLATES.GENERATE_FOLLOW_UP_QUESTIONS.replace(
@@ -378,7 +359,7 @@ export async function generateFollowUpQuestions(
                 },
             ],
             temperature: 0.7,
-            max_tokens: 1500,
+            max_tokens: 600, // Reduced from 1500
         });
 
         const response = completion.choices[0]?.message?.content;
@@ -431,6 +412,7 @@ export function calculateCost(
     const pricing = {
         [AI_MODELS.GPT_4]: { input: 0.03, output: 0.06 },
         [AI_MODELS.GPT_4_TURBO]: { input: 0.01, output: 0.03 },
+        [AI_MODELS.GPT_4O_MINI]: { input: 0.00015, output: 0.0006 }, // Much cheaper!
         [AI_MODELS.GPT_3_5_TURBO]: { input: 0.001, output: 0.002 },
     };
 
