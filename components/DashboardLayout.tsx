@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+    Home,
     User,
     MessageSquare,
     History,
@@ -20,6 +21,12 @@ interface DashboardLayoutProps {
 }
 
 const navigation = [
+    {
+        name: 'Home',
+        href: '/dashboard',
+        icon: Home,
+        description: 'Dashboard overview and quick actions',
+    },
     {
         name: 'Profile',
         href: '/dashboard/profile',
