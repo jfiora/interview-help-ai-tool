@@ -6,6 +6,8 @@ import { jobDescriptions, JobDescription } from '../mock/jobDescriptions';
 import JobButton from '../components/JobButton';
 import JobDescriptionBox from '../components/JobDescriptionBox';
 import UploadSection from '../components/UploadSection';
+import AIQuestionGenerator from '../components/AIQuestionGenerator';
+import { GeneratedQuestion } from '../types/openai';
 
 export default function Home() {
     const router = useRouter();
@@ -15,10 +17,12 @@ export default function Home() {
     const [jobDescription, setJobDescription] = useState<JobDescription>(
         jobDescriptions['Human Resources Specialist']
     );
+    const [showAIGenerator, setShowAIGenerator] = useState(false);
 
     const handleJobSelect = (jobTitle: string) => {
         setSelectedJob(jobTitle);
         setJobDescription(jobDescriptions[jobTitle]);
+        setShowAIGenerator(false); // Reset AI generator when job changes
     };
 
     const handleDescriptionChange = (newDescription: string) => {
@@ -38,12 +42,28 @@ export default function Home() {
         router.push(`/questions?${params.toString()}`);
     };
 
+    const handleAIQuestionsGenerated = (questions: GeneratedQuestion[]) => {
+        // Questions have been generated, you can store them or navigate to questions page
+        console.log('AI generated questions:', questions);
+
+        // Optionally navigate to questions page with the generated questions
+        const params = new URLSearchParams({
+            job: selectedJob,
+            description: jobDescription.roleSummary,
+        });
+        router.push(`/questions?${params.toString()}`);
+    };
+
+    const toggleAIGenerator = () => {
+        setShowAIGenerator(!showAIGenerator);
+    };
+
     return (
         <main className='min-h-screen bg-gray-50 py-8 px-4'>
             <div className='max-w-6xl mx-auto'>
                 {/* Page Title */}
                 <h1 className='text-3xl font-bold text-gray-900 text-center mb-8'>
-                    Select a job description
+                    Interview Help AI Tool
                 </h1>
 
                 {/* Job Selection Buttons */}
@@ -92,6 +112,43 @@ export default function Home() {
                     onDescriptionChange={handleDescriptionChange}
                 />
 
+                {/* AI Question Generator Toggle */}
+                <div className='text-center mt-6 mb-4'>
+                    <button
+                        onClick={toggleAIGenerator}
+                        className='bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-200 flex items-center mx-auto'
+                    >
+                        {showAIGenerator ? 'Hide' : 'Show'} AI Question
+                        Generator
+                        <svg
+                            className={`w-4 h-4 ml-2 transition-transform duration-200 ${
+                                showAIGenerator ? 'rotate-180' : ''
+                            }`}
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                        >
+                            <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth={2}
+                                d='M19 9l-7 7-7-7'
+                            />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* AI Question Generator */}
+                {showAIGenerator && (
+                    <div className='mb-8'>
+                        <AIQuestionGenerator
+                            jobTitle={selectedJob}
+                            jobDescription={jobDescription.roleSummary}
+                            onQuestionsGenerated={handleAIQuestionsGenerated}
+                        />
+                    </div>
+                )}
+
                 {/* Upload Section */}
                 <UploadSection />
 
@@ -101,7 +158,7 @@ export default function Home() {
                         onClick={handleGenerateQuestions}
                         className='bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 flex items-center mx-auto'
                     >
-                        Generate Questions
+                        View Questions Page
                         <svg
                             className='w-5 h-5 ml-2'
                             fill='none'
