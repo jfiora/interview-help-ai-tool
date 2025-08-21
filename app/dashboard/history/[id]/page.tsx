@@ -38,6 +38,7 @@ interface SessionData {
         model_used: string;
         tokens_used: number;
         estimated_cost: number;
+        linkedin_profile?: string | null;
     };
     questions: SessionQuestion[];
 }
@@ -217,6 +218,82 @@ export default function SessionDetailPage() {
                     </p>
                 </div>
             </div>
+
+            {/* LinkedIn Profile Optimization */}
+            {session.linkedin_profile && (
+                <div className='bg-white rounded-lg border border-gray-200 p-6'>
+                    <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center'>
+                        💼 LinkedIn Profile Optimization
+                    </h2>
+                    {(() => {
+                        try {
+                            const profileData = JSON.parse(
+                                session.linkedin_profile
+                            );
+                            return (
+                                <div className='space-y-4'>
+                                    {/* LinkedIn Headline */}
+                                    <div>
+                                        <h3 className='text-sm font-medium text-gray-700 mb-2'>
+                                            LinkedIn Headline
+                                        </h3>
+                                        <div className='bg-blue-50 border border-blue-200 rounded-md p-4'>
+                                            <p className='text-blue-900 font-medium'>
+                                                {profileData.linkedinHeadline}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* LinkedIn About */}
+                                    <div>
+                                        <h3 className='text-sm font-medium text-gray-700 mb-2'>
+                                            LinkedIn About Section
+                                        </h3>
+                                        <div className='bg-green-50 border border-green-200 rounded-md p-4'>
+                                            <p className='text-green-900 whitespace-pre-line'>
+                                                {profileData.linkedinAbout}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Copy Buttons */}
+                                    <div className='flex gap-3 pt-2'>
+                                        <button
+                                            onClick={() =>
+                                                navigator.clipboard.writeText(
+                                                    profileData.linkedinHeadline
+                                                )
+                                            }
+                                            className='bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200'
+                                        >
+                                            Copy Headline
+                                        </button>
+                                        <button
+                                            onClick={() =>
+                                                navigator.clipboard.writeText(
+                                                    profileData.linkedinAbout
+                                                )
+                                            }
+                                            className='bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200'
+                                        >
+                                            Copy About Section
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        } catch (error) {
+                            return (
+                                <div className='text-gray-500 text-center py-4'>
+                                    <p>
+                                        LinkedIn profile data is not available
+                                        in the expected format.
+                                    </p>
+                                </div>
+                            );
+                        }
+                    })()}
+                </div>
+            )}
 
             {/* Questions and Answers */}
             {questions && questions.length > 0 ? (

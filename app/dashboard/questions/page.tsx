@@ -21,6 +21,11 @@ function QuestionsPageContent() {
     const [sessionSaved, setSessionSaved] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [sessionKey, setSessionKey] = useState<string | null>(null);
+    const [linkedinProfile, setLinkedinProfile] = useState<{
+        linkedinAbout: string;
+        linkedinHeadline: string;
+    } | null>(null);
+    const [isGeneratingLinkedin, setIsGeneratingLinkedin] = useState(false);
 
     const {
         questions: generatedQuestions,
@@ -63,6 +68,8 @@ function QuestionsPageContent() {
             setIsInitialLoading(false);
             // Automatically generate answers for all questions only once
             generateAnswersForAllQuestions(generatedQuestions);
+            // Generate LinkedIn profile
+            generateLinkedinProfile();
         }
     }, [generatedQuestions, hasGeneratedQuestions]);
 
@@ -93,6 +100,38 @@ function QuestionsPageContent() {
 
     const handleClearError = () => {
         clearError();
+    };
+
+    const generateLinkedinProfile = async () => {
+        if (!jobTitle || !jobDescription) return;
+
+        setIsGeneratingLinkedin(true);
+        try {
+            const response = await fetch('/api/ai/generate-linkedin-profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jobTitle,
+                    jobDescription,
+                    userEmail: 'user@example.com', // TODO: Get from user profile
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate LinkedIn profile');
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                setLinkedinProfile(result.data);
+            }
+        } catch (error) {
+            console.error('Failed to generate LinkedIn profile:', error);
+        } finally {
+            setIsGeneratingLinkedin(false);
+        }
     };
 
     const generateAnswersForAllQuestions = async (
@@ -187,6 +226,9 @@ function QuestionsPageContent() {
                 job_title: jobTitle,
                 job_description: jobDescription,
                 model_used: 'gpt-4o-mini',
+                linkedin_profile: linkedinProfile
+                    ? JSON.stringify(linkedinProfile)
+                    : null,
             });
 
             if (session) {
@@ -349,6 +391,102 @@ function QuestionsPageContent() {
                         {jobDescription.length > 300 ? '...' : ''}
                     </p>
                 </div>
+            </div>
+
+            {/* LinkedIn Profile Optimization */}
+            <div className='bg-white rounded-lg border border-gray-200 p-6'>
+                <div className='flex items-center justify-between mb-4'>
+                    <h2 className='text-lg font-semibold text-gray-900'>
+                        💼 LinkedIn Profile Optimization
+                    </h2>
+                    {!linkedinProfile && (
+                        <button
+                            onClick={generateLinkedinProfile}
+                            disabled={isGeneratingLinkedin}
+                            className='bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center'
+                        >
+                            {isGeneratingLinkedin ? (
+                                <>
+                                    <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                                    Generating...
+                                </>
+                            ) : (
+                                'Generate Profile'
+                            )}
+                        </button>
+                    )}
+                </div>
+
+                {isGeneratingLinkedin ? (
+                    <div className='text-center py-8'>
+                        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3'></div>
+                        <p className='text-gray-600'>
+                            Generating your LinkedIn profile optimization...
+                        </p>
+                    </div>
+                ) : linkedinProfile ? (
+                    <div className='space-y-4'>
+                        {/* LinkedIn Headline */}
+                        <div>
+                            <h3 className='text-sm font-medium text-gray-700 mb-2'>
+                                LinkedIn Headline
+                            </h3>
+                            <div className='bg-blue-50 border border-blue-200 rounded-md p-4'>
+                                <p className='text-blue-900 font-medium'>
+                                    {linkedinProfile.linkedinHeadline}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* LinkedIn About */}
+                        <div>
+                            <h3 className='text-sm font-medium text-gray-700 mb-2'>
+                                LinkedIn About Section
+                            </h3>
+                            <div className='bg-green-50 border border-green-200 rounded-md p-4'>
+                                <p className='text-green-900 whitespace-pre-line'>
+                                    {linkedinProfile.linkedinAbout}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Copy Buttons */}
+                        <div className='flex gap-3 pt-2'>
+                            <button
+                                onClick={() =>
+                                    navigator.clipboard.writeText(
+                                        linkedinProfile.linkedinHeadline
+                                    )
+                                }
+                                className='bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200'
+                            >
+                                Copy Headline
+                            </button>
+                            <button
+                                onClick={() =>
+                                    navigator.clipboard.writeText(
+                                        linkedinProfile.linkedinAbout
+                                    )
+                                }
+                                className='bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200'
+                            >
+                                Copy About Section
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className='text-center py-8 text-gray-500'>
+                        <p className='mb-3'>
+                            Get AI-powered LinkedIn profile optimization to make
+                            yourself more discoverable to recruiters.
+                        </p>
+                        <p className='text-sm'>
+                            Click "Generate Profile" to create a professional
+                            headline and about section based on your job
+                            description.
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Interview Questions */}

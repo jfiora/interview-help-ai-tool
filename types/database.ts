@@ -529,6 +529,7 @@ export interface QASession {
     model_used: string;
     tokens_used: number;
     estimated_cost: number;
+    linkedin_profile?: string | null;
 }
 
 export interface SessionQuestion {
@@ -651,6 +652,7 @@ export interface CreateSessionRequest {
     job_title: string;
     job_description: string;
     model_used: string;
+    linkedin_profile?: string | null;
 }
 
 export interface SaveQuestionsRequest {

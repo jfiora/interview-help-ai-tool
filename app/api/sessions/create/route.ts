@@ -20,8 +20,13 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { session_name, job_title, job_description, model_used } =
-            await request.json();
+        const {
+            session_name,
+            job_title,
+            job_description,
+            model_used,
+            linkedin_profile,
+        } = await request.json();
 
         // Validate input
         if (!session_name || !job_title || !job_description || !model_used) {
@@ -42,6 +47,7 @@ export async function POST(request: NextRequest) {
                 p_job_title: job_title,
                 p_job_description: job_description,
                 p_model_used: model_used,
+                p_linkedin_profile: linkedin_profile || null,
             }
         );
 
