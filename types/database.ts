@@ -1,6 +1,7 @@
+import { GeneratedQuestion } from './openai';
+
 // =====================================================
-// Database Types for Interview Help AI Tool
-// Generated to match the Supabase database schema
+// Database Schema Types
 // =====================================================
 
 export interface Database {
@@ -250,6 +251,79 @@ export interface Database {
                     created_at?: string;
                 };
             };
+            qa_sessions: {
+                Row: {
+                    id: string;
+                    session_name: string;
+                    job_title: string;
+                    job_description: string;
+                    created_at: string;
+                    updated_at: string;
+                    total_questions: number;
+                    total_answers: number;
+                    model_used: string;
+                    tokens_used: number;
+                    estimated_cost: number;
+                };
+                Insert: Omit<QASession, 'id' | 'created_at' | 'updated_at'>;
+                Update: Partial<Omit<QASession, 'id' | 'created_at' | 'updated_at'>>;
+            };
+            session_questions: {
+                Row: {
+                    id: string;
+                    session_id: string;
+                    question_text: string;
+                    question_type: string;
+                    difficulty_level: string;
+                    category: string;
+                    explanation: string | null;
+                    question_order: number;
+                    created_at: string;
+                };
+                Insert: Omit<SessionQuestion, 'id' | 'created_at'>;
+                Update: Partial<Omit<SessionQuestion, 'id' | 'created_at'>>;
+            };
+            session_answers: {
+                Row: {
+                    id: string;
+                    question_id: string;
+                    session_id: string;
+                    answer_text: string;
+                    answer_type: string;
+                    key_points: string[];
+                    tips: string | null;
+                    created_at: string;
+                };
+                Insert: Omit<SessionAnswer, 'id' | 'created_at'>;
+                Update: Partial<Omit<SessionAnswer, 'id' | 'created_at'>>;
+            };
+            job_description_templates: {
+                Row: {
+                    id: string;
+                    title: string;
+                    description: string;
+                    industry: string | null;
+                    experience_level: string | null;
+                    is_public: boolean;
+                    created_at: string;
+                    updated_at: string;
+                };
+                Insert: Omit<JobDescriptionTemplate, 'id' | 'created_at' | 'updated_at'>;
+                Update: Partial<Omit<JobDescriptionTemplate, 'id' | 'created_at' | 'updated_at'>>;
+            };
+            user_preferences: {
+                Row: {
+                    id: string;
+                    user_identifier: string;
+                    preferred_model: string;
+                    max_questions: number;
+                    temperature: number;
+                    created_at: string;
+                    updated_at: string;
+                };
+                Insert: Omit<UserPreferences, 'id' | 'created_at' | 'updated_at'>;
+                Update: Partial<Omit<UserPreferences, 'id' | 'created_at' | 'updated_at'>>;
+            };
         };
         Views: {
             job_details: {
@@ -283,6 +357,12 @@ export interface Database {
                     key_points: string[] | null;
                 };
             };
+            complete_qa_sessions: {
+                Row: CompleteQASession;
+            };
+            session_summaries: {
+                Row: SessionSummary;
+            };
         };
         Functions: {
             get_job_questions: {
@@ -311,6 +391,35 @@ export interface Database {
                     category: string;
                     relevance_score: number;
                 }[];
+            };
+            create_qa_session: {
+                Args: {
+                    p_session_name: string;
+                    p_job_title: string;
+                    p_job_description: string;
+                    p_model_used: string;
+                };
+                Returns: string;
+            };
+            add_session_questions: {
+                Args: {
+                    p_session_id: string;
+                    p_questions: unknown;
+                };
+                Returns: number;
+            };
+            add_session_answers: {
+                Args: {
+                    p_session_id: string;
+                    p_answers: unknown;
+                };
+                Returns: number;
+            };
+            calculate_session_cost: {
+                Args: {
+                    p_session_id: string;
+                };
+                Returns: number;
             };
         };
     };
@@ -389,6 +498,100 @@ export interface UserSession {
 }
 
 // =====================================================
+// Q&A Sessions and History Types
+// =====================================================
+
+export interface QASession {
+    id: string;
+    session_name: string;
+    job_title: string;
+    job_description: string;
+    created_at: string;
+    updated_at: string;
+    total_questions: number;
+    total_answers: number;
+    model_used: string;
+    tokens_used: number;
+    estimated_cost: number;
+}
+
+export interface SessionQuestion {
+    id: string;
+    session_id: string;
+    question_text: string;
+    question_type: string;
+    difficulty_level: string;
+    category: string;
+    explanation: string | null;
+    question_order: number;
+    created_at: string;
+}
+
+export interface SessionAnswer {
+    id: string;
+    question_id: string;
+    session_id: string;
+    answer_text: string;
+    answer_type: string;
+    key_points: string[];
+    tips: string | null;
+    created_at: string;
+}
+
+export interface JobDescriptionTemplate {
+    id: string;
+    title: string;
+    description: string;
+    industry: string | null;
+    experience_level: string | null;
+    is_public: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface UserPreferences {
+    id: string;
+    user_identifier: string;
+    preferred_model: string;
+    max_questions: number;
+    temperature: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CompleteQASession {
+    session_id: string;
+    session_name: string;
+    job_title: string;
+    job_description: string;
+    created_at: string;
+    total_questions: number;
+    total_answers: number;
+    model_used: string;
+    estimated_cost: number;
+    question_text: string | null;
+    question_type: string | null;
+    difficulty_level: string | null;
+    category: string | null;
+    explanation: string | null;
+    question_order: number | null;
+    answer_text: string | null;
+    key_points: string[] | null;
+    tips: string | null;
+}
+
+export interface SessionSummary {
+    id: string;
+    session_name: string;
+    job_title: string;
+    created_at: string;
+    total_questions: number;
+    total_answers: number;
+    model_used: string;
+    estimated_cost: number;
+}
+
+// =====================================================
 // COMPOSITE TYPES FOR UI
 // =====================================================
 
@@ -421,6 +624,51 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
     totalPages: number;
+}
+
+// =====================================================
+// API Request/Response Types
+// =====================================================
+
+export interface CreateSessionRequest {
+    session_name: string;
+    job_title: string;
+    job_description: string;
+    model_used: string;
+}
+
+export interface SaveQuestionsRequest {
+    session_id: string;
+    questions: GeneratedQuestion[];
+}
+
+export interface SaveAnswersRequest {
+    session_id: string;
+    answers: Array<{
+        question_order: number;
+        answer_text: string;
+        answer_type: string;
+        key_points: string[];
+        tips?: string;
+    }>;
+}
+
+export interface SessionResponse {
+    success: boolean;
+    data: QASession;
+    message: string;
+}
+
+export interface SessionsListResponse {
+    success: boolean;
+    data: SessionSummary[];
+    message: string;
+}
+
+export interface CompleteSessionResponse {
+    success: boolean;
+    data: CompleteQASession[];
+    message: string;
 }
 
 // =====================================================

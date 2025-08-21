@@ -6,6 +6,7 @@ import { jobDescriptions, JobDescription } from '../mock/jobDescriptions';
 import JobButton from '../components/JobButton';
 import JobDescriptionBox from '../components/JobDescriptionBox';
 import UploadSection from '../components/UploadSection';
+import Link from 'next/link';
 
 export default function Home() {
     const router = useRouter();
@@ -41,10 +42,24 @@ export default function Home() {
     return (
         <main className='min-h-screen bg-gray-50 py-8 px-4'>
             <div className='max-w-6xl mx-auto'>
-                {/* Page Title */}
-                <h1 className='text-3xl font-bold text-gray-900 text-center mb-8'>
-                    Interview Help AI Tool
-                </h1>
+                {/* Header */}
+                <div className='text-center mb-8'>
+                    <h1 className='text-4xl font-bold text-gray-900 mb-4'>
+                        Interview Help AI Tool
+                    </h1>
+                    <p className='text-xl text-gray-600 mb-6'>
+                        Generate AI-powered interview questions and answers for
+                        any job role
+                    </p>
+                    <div className='flex justify-center space-x-4'>
+                        <Link
+                            href='/history'
+                            className='bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200'
+                        >
+                            View History
+                        </Link>
+                    </div>
+                </div>
 
                 {/* Job Selection Buttons */}
                 <div className='mb-8'>

@@ -364,3 +364,292 @@ COMMENT ON TABLE user_sessions IS 'Tracks user job selections and custom descrip
 
 COMMENT ON FUNCTION get_job_questions IS 'Returns all questions and answers for a specific job';
 COMMENT ON FUNCTION search_jobs IS 'Searches jobs by keyword with relevance scoring';
+
+-- =====================================================
+-- Q&A Sessions and History Tables
+-- =====================================================
+
+-- Table to store Q&A sessions
+CREATE TABLE qa_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_name VARCHAR(255) NOT NULL,
+    job_title VARCHAR(255) NOT NULL,
+    job_description TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_questions INTEGER DEFAULT 0,
+    total_answers INTEGER DEFAULT 0,
+    model_used VARCHAR(100) NOT NULL,
+    tokens_used INTEGER DEFAULT 0,
+    estimated_cost DECIMAL(10,6) DEFAULT 0.0
+);
+
+-- Table to store questions for each session
+CREATE TABLE session_questions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID NOT NULL REFERENCES qa_sessions(id) ON DELETE CASCADE,
+    question_text TEXT NOT NULL,
+    question_type VARCHAR(50) NOT NULL,
+    difficulty_level VARCHAR(20) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    explanation TEXT,
+    question_order INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Table to store answers for each question
+CREATE TABLE session_answers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_id UUID NOT NULL REFERENCES session_questions(id) ON DELETE CASCADE,
+    session_id UUID NOT NULL REFERENCES qa_sessions(id) ON DELETE CASCADE,
+    answer_text TEXT NOT NULL,
+    answer_type VARCHAR(50) NOT NULL,
+    key_points TEXT[], -- Array of key points
+    tips TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Table to store job description templates
+CREATE TABLE job_description_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    industry VARCHAR(100),
+    experience_level VARCHAR(50),
+    is_public BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Table to store user preferences and settings
+CREATE TABLE user_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_identifier VARCHAR(255) UNIQUE NOT NULL, -- Could be email, session ID, etc.
+    preferred_model VARCHAR(100) DEFAULT 'gpt-4o-mini',
+    max_questions INTEGER DEFAULT 6,
+    temperature DECIMAL(3,2) DEFAULT 0.7,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =====================================================
+-- Indexes for Performance
+-- =====================================================
+
+CREATE INDEX idx_qa_sessions_job_title ON qa_sessions(job_title);
+CREATE INDEX idx_qa_sessions_created_at ON qa_sessions(created_at);
+CREATE INDEX idx_session_questions_session_id ON session_questions(session_id);
+CREATE INDEX idx_session_answers_question_id ON session_answers(question_id);
+CREATE INDEX idx_session_answers_session_id ON session_answers(session_id);
+CREATE INDEX idx_job_templates_title ON job_description_templates(title);
+CREATE INDEX idx_job_templates_industry ON job_description_templates(industry);
+
+-- =====================================================
+-- Views for Easy Data Access
+-- =====================================================
+
+-- View for complete Q&A sessions with questions and answers
+CREATE VIEW complete_qa_sessions AS
+SELECT 
+    qs.id as session_id,
+    qs.session_name,
+    qs.job_title,
+    qs.job_description,
+    qs.created_at,
+    qs.total_questions,
+    qs.total_answers,
+    qs.model_used,
+    qs.estimated_cost,
+    sq.question_text,
+    sq.question_type,
+    sq.difficulty_level,
+    sq.category,
+    sq.explanation,
+    sq.question_order,
+    sa.answer_text,
+    sa.key_points,
+    sa.tips
+FROM qa_sessions qs
+LEFT JOIN session_questions sq ON qs.id = sq.session_id
+LEFT JOIN session_answers sa ON sq.id = sa.question_id
+ORDER BY qs.created_at DESC, sq.question_order, sa.created_at;
+
+-- View for session summaries
+CREATE VIEW session_summaries AS
+SELECT 
+    id,
+    session_name,
+    job_title,
+    created_at,
+    total_questions,
+    total_answers,
+    model_used,
+    estimated_cost
+FROM qa_sessions
+ORDER BY created_at DESC;
+
+-- =====================================================
+-- Functions for Data Management
+-- =====================================================
+
+-- Function to create a new Q&A session
+CREATE OR REPLACE FUNCTION create_qa_session(
+    p_session_name VARCHAR(255),
+    p_job_title VARCHAR(255),
+    p_job_description TEXT,
+    p_model_used VARCHAR(100)
+) RETURNS UUID AS $$
+DECLARE
+    v_session_id UUID;
+BEGIN
+    INSERT INTO qa_sessions (session_name, job_title, job_description, model_used)
+    VALUES (p_session_name, p_job_title, p_job_description, p_model_used)
+    RETURNING id INTO v_session_id;
+    
+    RETURN v_session_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to add questions to a session
+CREATE OR REPLACE FUNCTION add_session_questions(
+    p_session_id UUID,
+    p_questions JSON
+) RETURNS INTEGER AS $$
+DECLARE
+    v_question JSON;
+    v_order INTEGER := 1;
+    v_count INTEGER := 0;
+BEGIN
+    FOR v_question IN SELECT * FROM json_array_elements(p_questions)
+    LOOP
+        INSERT INTO session_questions (
+            session_id,
+            question_text,
+            question_type,
+            difficulty_level,
+            category,
+            explanation,
+            question_order
+        ) VALUES (
+            p_session_id,
+            v_question->>'question',
+            v_question->>'question_type',
+            v_question->>'difficulty_level',
+            v_question->>'category',
+            v_question->>'explanation',
+            v_order
+        );
+        
+        v_order := v_order + 1;
+        v_count := v_count + 1;
+    END LOOP;
+    
+    -- Update total questions count
+    UPDATE qa_sessions SET total_questions = v_count WHERE id = p_session_id;
+    
+    RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to add answers to questions
+CREATE OR REPLACE FUNCTION add_session_answers(
+    p_session_id UUID,
+    p_answers JSON
+) RETURNS INTEGER AS $$
+DECLARE
+    v_answer JSON;
+    v_question_id UUID;
+    v_count INTEGER := 0;
+BEGIN
+    FOR v_answer IN SELECT * FROM json_array_elements(p_answers)
+    LOOP
+        -- Find the corresponding question
+        SELECT sq.id INTO v_question_id
+        FROM session_questions sq
+        WHERE sq.session_id = p_session_id 
+        AND sq.question_order = (v_answer->>'question_order')::INTEGER;
+        
+        IF v_question_id IS NOT NULL THEN
+            INSERT INTO session_answers (
+                question_id,
+                session_id,
+                answer_text,
+                answer_type,
+                key_points,
+                tips
+            ) VALUES (
+                v_question_id,
+                p_session_id,
+                v_answer->>'answer_text',
+                v_answer->>'answer_type',
+                ARRAY(SELECT json_array_elements_text(v_answer->'key_points')),
+                v_answer->>'tips'
+            );
+            
+            v_count := v_count + 1;
+        END IF;
+    END LOOP;
+    
+    -- Update total answers count
+    UPDATE qa_sessions SET total_answers = v_count WHERE id = p_session_id;
+    
+    RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to calculate session cost
+CREATE OR REPLACE FUNCTION calculate_session_cost(
+    p_session_id UUID
+) RETURNS DECIMAL(10,6) AS $$
+DECLARE
+    v_cost DECIMAL(10,6);
+    v_tokens INTEGER;
+BEGIN
+    SELECT tokens_used INTO v_tokens FROM qa_sessions WHERE id = p_session_id;
+    
+    -- Rough cost calculation (adjust based on actual pricing)
+    v_cost := (v_tokens::DECIMAL / 1000) * 0.0006; -- Using GPT-4o-mini pricing
+    
+    UPDATE qa_sessions SET estimated_cost = v_cost WHERE id = p_session_id;
+    
+    RETURN v_cost;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- Sample Data for Job Description Templates
+-- =====================================================
+
+INSERT INTO job_description_templates (title, description, industry, experience_level) VALUES
+('Full Stack Developer', 'We are seeking a Full Stack Developer to join our team. The ideal candidate should have experience with React, Node.js, and databases. Responsibilities include developing and maintaining web applications, collaborating with cross-functional teams, and ensuring code quality and performance.', 'Technology', 'Mid-level'),
+('Data Analyst', 'We are seeking a Data Analyst to join our team. This entry-to-mid-level position is a wonderful opportunity for those who are passionate about data-driven insights and are looking to broaden their experience in data analysis.', 'Technology', 'Entry-Mid'),
+('Product Manager', 'We are looking for a Product Manager to drive product strategy and execution. The ideal candidate should have experience in product development, user research, and cross-functional team leadership.', 'Technology', 'Mid-Senior'),
+('UX/UI Designer', 'We are seeking a UX/UI Designer to create intuitive and engaging user experiences. The ideal candidate should have experience in user research, wireframing, prototyping, and design systems.', 'Technology', 'Mid-level'),
+('Software Engineer', 'We are looking for a Software Engineer to develop high-quality software solutions. The ideal candidate should have strong programming skills, experience with modern development practices, and a passion for clean code.', 'Technology', 'Mid-level');
+
+-- =====================================================
+-- RLS Policies for Security
+-- =====================================================
+
+-- Enable RLS on all tables
+ALTER TABLE qa_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE session_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE session_answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE job_description_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+
+-- Basic policies (adjust based on your authentication system)
+CREATE POLICY "Allow public read access to job templates" ON job_description_templates
+    FOR SELECT USING (is_public = true);
+
+CREATE POLICY "Allow public access to Q&A sessions" ON qa_sessions
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to session questions" ON session_questions
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to session answers" ON session_answers
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to user preferences" ON user_preferences
+    FOR ALL USING (true);
