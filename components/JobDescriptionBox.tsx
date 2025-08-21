@@ -3,11 +3,13 @@ import { JobDescription } from '../mock/jobDescriptions';
 interface JobDescriptionBoxProps {
     jobDescription: JobDescription;
     onDescriptionChange: (newDescription: string) => void;
+    onTitleChange?: (newTitle: string) => void;
 }
 
 export default function JobDescriptionBox({
     jobDescription,
     onDescriptionChange,
+    onTitleChange,
 }: JobDescriptionBoxProps) {
     // Safety check for server-side rendering
     if (!jobDescription || !jobDescription.roleSummary) {
@@ -26,10 +28,54 @@ export default function JobDescriptionBox({
 
     return (
         <div className='bg-white rounded-lg border border-gray-200 p-6 mb-6'>
-            {/* Job Title */}
-            <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-                {jobDescription.title}
-            </h2>
+            {/* Editable Job Title */}
+            <div className='mb-4'>
+                <div className='flex items-center justify-between mb-2'>
+                    <label
+                        htmlFor='jobTitle'
+                        className='block text-sm font-medium text-gray-700'
+                    >
+                        Job Title: <span className='text-red-500'>*</span>
+                    </label>
+                    {jobDescription.title !== 'Custom Job Description' &&
+                        jobDescription.title.trim() !== '' && (
+                            <span className='inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800'>
+                                Customized
+                            </span>
+                        )}
+                </div>
+                <div className='relative'>
+                    <input
+                        id='jobTitle'
+                        type='text'
+                        value={jobDescription.title}
+                        onChange={(e) => onTitleChange?.(e.target.value)}
+                        className='w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent text-lg font-semibold'
+                        placeholder={
+                            !jobDescription.title || jobDescription.title === ''
+                                ? 'Enter your custom job title here...'
+                                : 'Enter the job title (e.g., Senior Frontend Developer)'
+                        }
+                        maxLength={100}
+                    />
+                    <div className='absolute right-3 top-1/2 transform -translate-y-1/2'>
+                        <span className='text-xs text-gray-400 bg-white px-1'>
+                            {(jobDescription.title || '').length}/100
+                        </span>
+                    </div>
+                </div>
+                <p className='text-sm text-gray-500 mt-1'>
+                    This title will be used for searching and organizing your
+                    Q&A sessions. You can customize it to be more specific
+                    (e.g., "Senior React Developer at TechCorp").
+                </p>
+                {(!jobDescription.title ||
+                    jobDescription.title.trim() === '') && (
+                    <p className='text-sm text-red-500 mt-1'>
+                        Please enter a job title to continue
+                    </p>
+                )}
+            </div>
 
             {/* Full Job Description Textarea */}
             <div className='mb-4'>
