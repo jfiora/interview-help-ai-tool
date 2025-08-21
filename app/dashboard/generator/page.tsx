@@ -22,17 +22,20 @@ export default function QAGenerator() {
 
     const handleJobSelect = (jobTitle: string) => {
         setSelectedJob(jobTitle);
-        setJobDescription(jobDescriptions[jobTitle]);
 
-        // If user selects "Custom Job Description", clear the title to allow editing
         if (jobTitle === 'Custom Job Description') {
-            setJobDescription((prev) => ({
-                ...prev,
-                title: '', // Clear the title so user can enter their own
-            }));
+            // For custom job description, start with empty title
+            setJobDescription({
+                ...jobDescriptions[jobTitle],
+                title: '', // Clear the title so user must enter their own
+            });
+        } else {
+            // For predefined jobs, use the job title as default but allow editing
+            setJobDescription({
+                ...jobDescriptions[jobTitle],
+                title: jobTitle, // Use the job title as default
+            });
         }
-        // For predefined jobs, keep the title but allow editing
-        // The user can modify it if they want to be more specific
     };
 
     const handleDescriptionChange = (newDescription: string) => {
@@ -52,9 +55,15 @@ export default function QAGenerator() {
     const handleGenerateQuestions = () => {
         if (isGenerating) return; // Prevent multiple clicks
 
+        // Don't proceed if no custom title is entered
+        if (!jobDescription.title || jobDescription.title.trim() === '') {
+            alert('Please enter a custom job title to continue');
+            return;
+        }
+
         setIsGenerating(true);
         const params = new URLSearchParams({
-            job: selectedJob,
+            job: jobDescription.title, // Always use the custom title
             description: jobDescription.roleSummary,
         });
         router.push(`/dashboard/questions?${params.toString()}`);
@@ -115,7 +124,11 @@ export default function QAGenerator() {
             <div className='text-center'>
                 <button
                     onClick={handleGenerateQuestions}
-                    disabled={isGenerating || !jobDescription?.title?.trim()}
+                    disabled={
+                        isGenerating ||
+                        !jobDescription.title ||
+                        jobDescription.title.trim() === ''
+                    }
                     className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 flex items-center mx-auto text-lg disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                     <Sparkles className='w-5 h-5 mr-2' />
@@ -123,8 +136,8 @@ export default function QAGenerator() {
                     <ArrowRight className='w-5 h-5 ml-2' />
                 </button>
                 <p className='text-gray-500 mt-3 text-sm'>
-                    {!jobDescription?.title?.trim()
-                        ? 'Please enter a job title to continue'
+                    {!jobDescription.title || jobDescription.title.trim() === ''
+                        ? 'Please enter a custom job title to continue'
                         : 'This will create a new Q&A session and save it to your history'}
                 </p>
             </div>

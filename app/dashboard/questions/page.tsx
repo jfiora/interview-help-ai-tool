@@ -25,7 +25,6 @@ function QuestionsPageContent() {
         linkedinAbout: string;
         linkedinHeadline: string;
     } | null>(null);
-    const [isGeneratingLinkedin, setIsGeneratingLinkedin] = useState(false);
 
     const {
         questions: generatedQuestions,
@@ -105,7 +104,6 @@ function QuestionsPageContent() {
     const generateLinkedinProfile = async () => {
         if (!jobTitle || !jobDescription) return;
 
-        setIsGeneratingLinkedin(true);
         try {
             const response = await fetch('/api/ai/generate-linkedin-profile', {
                 method: 'POST',
@@ -129,8 +127,6 @@ function QuestionsPageContent() {
             }
         } catch (error) {
             console.error('Failed to generate LinkedIn profile:', error);
-        } finally {
-            setIsGeneratingLinkedin(false);
         }
     };
 
@@ -221,6 +217,7 @@ function QuestionsPageContent() {
 
             // Create session with session key identifier
             const sessionName = `${jobTitle} - ${new Date().toLocaleDateString()}`;
+
             const session = await createSession({
                 session_name: sessionName,
                 job_title: jobTitle,
@@ -395,36 +392,11 @@ function QuestionsPageContent() {
 
             {/* LinkedIn Profile Optimization */}
             <div className='bg-white rounded-lg border border-gray-200 p-6'>
-                <div className='flex items-center justify-between mb-4'>
-                    <h2 className='text-lg font-semibold text-gray-900'>
-                        💼 LinkedIn Profile Optimization
-                    </h2>
-                    {!linkedinProfile && (
-                        <button
-                            onClick={generateLinkedinProfile}
-                            disabled={isGeneratingLinkedin}
-                            className='bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center'
-                        >
-                            {isGeneratingLinkedin ? (
-                                <>
-                                    <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                                    Generating...
-                                </>
-                            ) : (
-                                'Generate Profile'
-                            )}
-                        </button>
-                    )}
-                </div>
+                <h2 className='text-lg font-semibold text-gray-900 mb-4'>
+                    💼 LinkedIn Profile Optimization
+                </h2>
 
-                {isGeneratingLinkedin ? (
-                    <div className='text-center py-8'>
-                        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3'></div>
-                        <p className='text-gray-600'>
-                            Generating your LinkedIn profile optimization...
-                        </p>
-                    </div>
-                ) : linkedinProfile ? (
+                {linkedinProfile ? (
                     <div className='space-y-4'>
                         {/* LinkedIn Headline */}
                         <div>
@@ -477,13 +449,12 @@ function QuestionsPageContent() {
                 ) : (
                     <div className='text-center py-8 text-gray-500'>
                         <p className='mb-3'>
-                            Get AI-powered LinkedIn profile optimization to make
-                            yourself more discoverable to recruiters.
+                            LinkedIn profile optimization is being generated
+                            automatically...
                         </p>
                         <p className='text-sm'>
-                            Click "Generate Profile" to create a professional
-                            headline and about section based on your job
-                            description.
+                            This will create a professional headline and about
+                            section based on your job description.
                         </p>
                     </div>
                 )}
