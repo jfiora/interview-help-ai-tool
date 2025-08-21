@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 import { Database } from '../../../../types/database';
 
 const supabase = createClient<Database>(
@@ -9,23 +10,40 @@ const supabase = createClient<Database>(
 
 export async function POST(request: NextRequest) {
     try {
-        const { session_name, job_title, job_description, model_used } = await request.json();
+        // Get the authenticated user
+        const { userId } = await auth();
+
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            );
+        }
+
+        const { session_name, job_title, job_description, model_used } =
+            await request.json();
 
         // Validate input
         if (!session_name || !job_title || !job_description || !model_used) {
             return NextResponse.json(
-                { error: 'Session name, job title, job description, and model are required' },
+                {
+                    error: 'Session name, job title, job description, and model are required',
+                },
                 { status: 400 }
             );
         }
 
-        // Create session using the database function
-        const { data: sessionId, error } = await supabase.rpc('create_qa_session', {
-            p_session_name: session_name,
-            p_job_title: job_title,
-            p_job_description: job_description,
-            p_model_used: model_used
-        });
+        // Create session using the database function with user ID
+        const { data: sessionId, error } = await supabase.rpc(
+            'create_qa_session',
+            {
+                p_user_id: userId,
+                p_session_name: session_name,
+                p_job_title: job_title,
+                p_job_description: job_description,
+                p_model_used: model_used,
+            }
+        );
 
         if (error) {
             console.error('Error creating session:', error);
@@ -53,9 +71,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             data: session,
-            message: 'Q&A session created successfully'
+            message: 'Q&A session created successfully',
         });
-
     } catch (error) {
         console.error('Error in create session API:', error);
         return NextResponse.json(

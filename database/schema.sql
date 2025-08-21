@@ -169,6 +169,9 @@ ALTER TABLE interview_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sample_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE qa_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE session_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE session_answers ENABLE ROW LEVEL SECURITY;
 
 -- Public read access for jobs, descriptions, questions, and answers
 CREATE POLICY "Public read access for jobs" ON jobs FOR SELECT USING (true);
@@ -182,6 +185,36 @@ CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid
 
 -- User sessions policies
 CREATE POLICY "Users can manage own sessions" ON user_sessions FOR ALL USING (auth.uid() = user_id);
+
+-- Clerk-based RLS policies for Q&A sessions
+CREATE POLICY "Users can view their own sessions" ON qa_sessions FOR SELECT USING (user_id = current_setting('app.current_user_id', true)::VARCHAR(255));
+CREATE POLICY "Users can insert their own sessions" ON qa_sessions FOR INSERT WITH CHECK (user_id = current_setting('app.current_user_id', true)::VARCHAR(255));
+CREATE POLICY "Users can update their own sessions" ON qa_sessions FOR UPDATE USING (user_id = current_setting('app.current_user_id', true)::VARCHAR(255));
+CREATE POLICY "Users can delete their own sessions" ON qa_sessions FOR DELETE USING (user_id = current_setting('app.current_user_id', true)::VARCHAR(255));
+
+-- Clerk-based RLS policies for session questions
+CREATE POLICY "Users can view their session questions" ON session_questions FOR SELECT USING (
+    session_id IN (
+        SELECT id FROM qa_sessions WHERE user_id = current_setting('app.current_user_id', true)::VARCHAR(255)
+    )
+);
+CREATE POLICY "Users can insert their session questions" ON session_questions FOR INSERT WITH CHECK (
+    session_id IN (
+        SELECT id FROM qa_sessions WHERE user_id = current_setting('app.current_user_id', true)::VARCHAR(255)
+    )
+);
+
+-- Clerk-based RLS policies for session answers
+CREATE POLICY "Users can view their session answers" ON session_answers FOR SELECT USING (
+    session_id IN (
+        SELECT id FROM qa_sessions WHERE user_id = current_setting('app.current_user_id', true)::VARCHAR(255)
+    )
+);
+CREATE POLICY "Users can insert their session answers" ON session_answers FOR INSERT WITH CHECK (
+    session_id IN (
+        SELECT id FROM qa_sessions WHERE user_id = current_setting('app.current_user_id', true)::VARCHAR(255)
+    )
+);
 
 -- =====================================================
 -- SAMPLE DATA INSERTION
@@ -372,6 +405,7 @@ COMMENT ON FUNCTION search_jobs IS 'Searches jobs by keyword with relevance scor
 -- Table to store Q&A sessions
 CREATE TABLE qa_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(255) NOT NULL, -- Clerk user ID
     session_name VARCHAR(255) NOT NULL,
     job_title VARCHAR(255) NOT NULL,
     job_description TEXT NOT NULL,
@@ -436,6 +470,7 @@ CREATE TABLE user_preferences (
 -- Indexes for Performance
 -- =====================================================
 
+CREATE INDEX idx_qa_sessions_user_id ON qa_sessions(user_id);
 CREATE INDEX idx_qa_sessions_job_title ON qa_sessions(job_title);
 CREATE INDEX idx_qa_sessions_created_at ON qa_sessions(created_at);
 CREATE INDEX idx_session_questions_session_id ON session_questions(session_id);
@@ -494,6 +529,7 @@ ORDER BY created_at DESC;
 
 -- Function to create a new Q&A session
 CREATE OR REPLACE FUNCTION create_qa_session(
+    p_user_id VARCHAR(255),
     p_session_name VARCHAR(255),
     p_job_title VARCHAR(255),
     p_job_description TEXT,
@@ -502,8 +538,8 @@ CREATE OR REPLACE FUNCTION create_qa_session(
 DECLARE
     v_session_id UUID;
 BEGIN
-    INSERT INTO qa_sessions (session_name, job_title, job_description, model_used)
-    VALUES (p_session_name, p_job_title, p_job_description, p_model_used)
+    INSERT INTO qa_sessions (user_id, session_name, job_title, job_description, model_used)
+    VALUES (p_user_id, p_session_name, p_job_title, p_job_description, p_model_used)
     RETURNING id INTO v_session_id;
     
     RETURN v_session_id;

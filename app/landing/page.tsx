@@ -9,6 +9,13 @@ import {
     ArrowRight,
     Sparkles,
 } from 'lucide-react';
+import {
+    SignInButton,
+    SignUpButton,
+    SignedIn,
+    SignedOut,
+    UserButton,
+} from '@clerk/nextjs';
 
 export default function LandingPage() {
     return (
@@ -25,12 +32,29 @@ export default function LandingPage() {
                                 Interview AI
                             </h1>
                         </div>
-                        <Link
-                            href='/dashboard'
-                            className='bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200'
-                        >
-                            Go to Dashboard
-                        </Link>
+                        <div className='flex items-center space-x-3'>
+                            <SignedOut>
+                                <SignInButton mode='modal'>
+                                    <button className='text-gray-700 hover:text-gray-900 font-medium py-2 px-4 transition-colors duration-200'>
+                                        Sign In
+                                    </button>
+                                </SignInButton>
+                                <SignUpButton mode='modal'>
+                                    <button className='bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200'>
+                                        Get Started
+                                    </button>
+                                </SignUpButton>
+                            </SignedOut>
+                            <SignedIn>
+                                <UserButton />
+                                <Link
+                                    href='/dashboard'
+                                    className='bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200'
+                                >
+                                    Dashboard
+                                </Link>
+                            </SignedIn>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -57,19 +81,34 @@ export default function LandingPage() {
                             question library.
                         </p>
                         <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-                            <Link
-                                href='/dashboard'
-                                className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg flex items-center justify-center'
-                            >
-                                Get Started
-                                <ArrowRight className='w-5 h-5 ml-2' />
-                            </Link>
-                            <Link
-                                href='/dashboard/history'
-                                className='bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg'
-                            >
-                                View Examples
-                            </Link>
+                            <SignedOut>
+                                <SignUpButton mode='modal'>
+                                    <button className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg flex items-center justify-center'>
+                                        Get Started
+                                        <ArrowRight className='w-5 h-5 ml-2' />
+                                    </button>
+                                </SignUpButton>
+                                <SignInButton mode='modal'>
+                                    <button className='bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg'>
+                                        Sign In
+                                    </button>
+                                </SignInButton>
+                            </SignedOut>
+                            <SignedIn>
+                                <Link
+                                    href='/dashboard'
+                                    className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg flex items-center justify-center'
+                                >
+                                    Go to Dashboard
+                                    <ArrowRight className='w-5 h-5 ml-2' />
+                                </Link>
+                                <Link
+                                    href='/dashboard/history'
+                                    className='bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg'
+                                >
+                                    View Examples
+                                </Link>
+                            </SignedIn>
                         </div>
                     </div>
                 </div>
@@ -154,13 +193,23 @@ export default function LandingPage() {
                         Join thousands of HR professionals who are already using
                         AI to create better interviews
                     </p>
-                    <Link
-                        href='/dashboard'
-                        className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg inline-flex items-center'
-                    >
-                        Start Creating Questions
-                        <ArrowRight className='w-5 h-5 ml-2' />
-                    </Link>
+                    <SignedOut>
+                        <SignUpButton mode='modal'>
+                            <button className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg inline-flex items-center'>
+                                Start Creating Questions
+                                <ArrowRight className='w-5 h-5 ml-2' />
+                            </button>
+                        </SignUpButton>
+                    </SignedOut>
+                    <SignedIn>
+                        <Link
+                            href='/dashboard'
+                            className='bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg inline-flex items-center'
+                        >
+                            Start Creating Questions
+                            <ArrowRight className='w-5 h-5 ml-2' />
+                        </Link>
+                    </SignedIn>
                 </div>
             </section>
 

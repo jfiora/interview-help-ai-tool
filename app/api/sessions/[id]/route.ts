@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 import { Database, QASession } from '../../../../types/database';
 
 const supabase = createClient<Database>(
@@ -12,6 +13,16 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     try {
+        // Get the authenticated user
+        const { userId } = await auth();
+
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            );
+        }
+
         const sessionId = params.id;
 
         if (!sessionId) {
@@ -43,11 +54,12 @@ export async function GET(
             );
         }
 
-        // Get session metadata
+        // Get session metadata and verify user ownership
         const { data: sessionMeta, error: metaError } = await supabase
             .from('qa_sessions')
             .select('*')
             .eq('id', sessionId)
+            .eq('user_id', userId)
             .single();
 
         if (metaError) {
@@ -75,12 +87,12 @@ export async function GET(
             }>;
         } = {
             session: sessionMeta,
-            questions: []
+            questions: [],
         };
 
         // Group questions and answers
         const questionMap = new Map();
-        sessionData.forEach(row => {
+        sessionData.forEach((row) => {
             if (row.question_text) {
                 if (!questionMap.has(row.question_order)) {
                     questionMap.set(row.question_order, {
@@ -89,15 +101,15 @@ export async function GET(
                         difficulty_level: row.difficulty_level,
                         category: row.category,
                         explanation: row.explanation,
-                        answer: null
+                        answer: null,
                     });
                 }
-                
+
                 if (row.answer_text) {
                     questionMap.get(row.question_order).answer = {
                         answer_text: row.answer_text,
                         key_points: row.key_points,
-                        tips: row.tips
+                        tips: row.tips,
                     };
                 }
             }
@@ -108,9 +120,8 @@ export async function GET(
         return NextResponse.json({
             success: true,
             data: structuredData,
-            message: 'Session retrieved successfully'
+            message: 'Session retrieved successfully',
         });
-
     } catch (error) {
         console.error('Error in get session API:', error);
         return NextResponse.json(
@@ -125,6 +136,16 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
+        // Get the authenticated user
+        const { userId } = await auth();
+
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            );
+        }
+
         const sessionId = params.id;
 
         if (!sessionId) {
@@ -134,11 +155,12 @@ export async function DELETE(
             );
         }
 
-        // Delete the session (cascade will handle questions and answers)
+        // Delete the session (cascade will handle questions and answers) - only if user owns it
         const { error } = await supabase
             .from('qa_sessions')
             .delete()
-            .eq('id', sessionId);
+            .eq('id', sessionId)
+            .eq('user_id', userId);
 
         if (error) {
             console.error('Error deleting session:', error);
@@ -150,9 +172,8 @@ export async function DELETE(
 
         return NextResponse.json({
             success: true,
-            message: 'Session deleted successfully'
+            message: 'Session deleted successfully',
         });
-
     } catch (error) {
         console.error('Error in delete session API:', error);
         return NextResponse.json(
@@ -164,7 +185,9 @@ export async function DELETE(
 
 export async function POST() {
     return NextResponse.json(
-        { error: 'Method not allowed. Use GET to retrieve or DELETE to remove a session.' },
+        {
+            error: 'Method not allowed. Use GET to retrieve or DELETE to remove a session.',
+        },
         { status: 405 }
     );
 }

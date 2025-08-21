@@ -9,12 +9,12 @@ import {
     MessageSquare,
     History,
     Settings,
-    LogOut,
     Menu,
     X,
     ChevronLeft,
     ChevronRight,
 } from 'lucide-react';
+import { UserButton } from '@clerk/nextjs';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -151,12 +151,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     })}
                 </nav>
 
-                {/* Logout section */}
+                {/* User section */}
                 <div className='border-t border-gray-200 p-4'>
-                    <button className='group flex w-full items-center rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200'>
-                        <LogOut className='mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500' />
-                        {!sidebarCollapsed && <span>Log out</span>}
-                    </button>
+                    <div className='flex items-center justify-center'>
+                        <UserButton
+                            appearance={{
+                                elements: {
+                                    userButtonBox: 'w-full',
+                                    userButtonTrigger: 'w-full',
+                                    userButtonPopoverCard: 'shadow-lg',
+                                },
+                            }}
+                            showName={!sidebarCollapsed}
+                        />
+                    </div>
                 </div>
             </div>
 

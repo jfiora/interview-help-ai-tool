@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 import { Database } from '../../../../types/database';
 
 const supabase = createClient<Database>(
@@ -9,15 +10,26 @@ const supabase = createClient<Database>(
 
 export async function GET(request: NextRequest) {
     try {
+        // Get the authenticated user
+        const { userId } = await auth();
+
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            );
+        }
+
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '10');
         const offset = (page - 1) * limit;
 
-        // Get sessions using the view
+        // Get sessions for the current user only
         const { data: sessions, error } = await supabase
-            .from('session_summaries')
+            .from('qa_sessions')
             .select('*')
+            .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
@@ -29,10 +41,11 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Get total count
+        // Get total count for the current user
         const { count } = await supabase
             .from('qa_sessions')
-            .select('*', { count: 'exact', head: true });
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
 
         return NextResponse.json({
             success: true,
@@ -41,11 +54,10 @@ export async function GET(request: NextRequest) {
                 page,
                 limit,
                 total: count || 0,
-                totalPages: Math.ceil((count || 0) / limit)
+                totalPages: Math.ceil((count || 0) / limit),
             },
-            message: 'Sessions retrieved successfully'
+            message: 'Sessions retrieved successfully',
         });
-
     } catch (error) {
         console.error('Error in list sessions API:', error);
         return NextResponse.json(

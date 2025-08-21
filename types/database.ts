@@ -266,7 +266,9 @@ export interface Database {
                     estimated_cost: number;
                 };
                 Insert: Omit<QASession, 'id' | 'created_at' | 'updated_at'>;
-                Update: Partial<Omit<QASession, 'id' | 'created_at' | 'updated_at'>>;
+                Update: Partial<
+                    Omit<QASession, 'id' | 'created_at' | 'updated_at'>
+                >;
             };
             session_questions: {
                 Row: {
@@ -308,8 +310,16 @@ export interface Database {
                     created_at: string;
                     updated_at: string;
                 };
-                Insert: Omit<JobDescriptionTemplate, 'id' | 'created_at' | 'updated_at'>;
-                Update: Partial<Omit<JobDescriptionTemplate, 'id' | 'created_at' | 'updated_at'>>;
+                Insert: Omit<
+                    JobDescriptionTemplate,
+                    'id' | 'created_at' | 'updated_at'
+                >;
+                Update: Partial<
+                    Omit<
+                        JobDescriptionTemplate,
+                        'id' | 'created_at' | 'updated_at'
+                    >
+                >;
             };
             user_preferences: {
                 Row: {
@@ -321,8 +331,13 @@ export interface Database {
                     created_at: string;
                     updated_at: string;
                 };
-                Insert: Omit<UserPreferences, 'id' | 'created_at' | 'updated_at'>;
-                Update: Partial<Omit<UserPreferences, 'id' | 'created_at' | 'updated_at'>>;
+                Insert: Omit<
+                    UserPreferences,
+                    'id' | 'created_at' | 'updated_at'
+                >;
+                Update: Partial<
+                    Omit<UserPreferences, 'id' | 'created_at' | 'updated_at'>
+                >;
             };
         };
         Views: {
@@ -503,6 +518,7 @@ export interface UserSession {
 
 export interface QASession {
     id: string;
+    user_id: string;
     session_name: string;
     job_title: string;
     job_description: string;
