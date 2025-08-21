@@ -250,7 +250,46 @@ export async function generateSampleAnswer(
             throw new Error('No response from OpenAI');
         }
 
-        const answer = JSON.parse(response) as GeneratedAnswer;
+        console.log('Raw OpenAI response for answer:', response);
+        console.log('Response type:', typeof response);
+        console.log('Response length:', response.length);
+
+        // Extract JSON content from markdown code blocks if present
+        let jsonContent = response;
+        if (response.includes('```json')) {
+            const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+                jsonContent = jsonMatch[1].trim();
+                console.log('Extracted JSON content for answer:', jsonContent);
+            }
+        } else if (response.includes('```')) {
+            // Handle case where there are code blocks but no language specified
+            const jsonMatch = response.match(/```\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+                jsonContent = jsonMatch[1].trim();
+                console.log(
+                    'Extracted content from code block for answer:',
+                    jsonContent
+                );
+            }
+        }
+
+        // Parse the JSON response
+        let answer: GeneratedAnswer;
+        try {
+            answer = JSON.parse(jsonContent) as GeneratedAnswer;
+        } catch (parseError) {
+            console.error('JSON parse error for answer:', parseError);
+            console.error('Failed to parse response:', response);
+            console.error('Attempted to parse:', jsonContent);
+            throw new Error(
+                `Invalid JSON response from OpenAI: ${
+                    parseError instanceof Error
+                        ? parseError.message
+                        : 'Unknown parse error'
+                }`
+            );
+        }
 
         // Validate required fields
         if (!answer.answer_text || !answer.key_points) {

@@ -1,11 +1,5 @@
 import { useCallback, useState } from 'react';
 import {
-    generateInterviewQuestions,
-    generateSampleAnswer,
-    improveJobDescription,
-    generateFollowUpQuestions,
-} from '../lib/openai';
-import {
     GeneratedQuestion,
     GeneratedAnswer,
     FollowUpQuestion,
@@ -14,98 +8,71 @@ import {
 } from '../types/openai';
 
 // =====================================================
-// AI Hook State Interface
+// Fixed Configuration
+// =====================================================
+
+const FIXED_MODEL: AIModel = AI_MODELS.GPT_4_TURBO;
+const FIXED_TEMPERATURE = 0.7;
+const FIXED_MAX_QUESTIONS = 6;
+
+// =====================================================
+// AI State Interface
 // =====================================================
 
 interface AIState {
     isLoading: boolean;
     error: string | null;
-    lastGenerated: {
-        questions?: GeneratedQuestion[];
-        answer?: GeneratedAnswer;
-        improvedDescription?: string;
-        followUpQuestions?: FollowUpQuestion[];
-    } | null;
+    questions: GeneratedQuestion[];
+    answer: GeneratedAnswer | null;
+    followUpQuestions: FollowUpQuestion[];
 }
+
+// =====================================================
+// AI Actions Interface
+// =====================================================
 
 interface AIActions {
     generateQuestions: (
         jobTitle: string,
-        jobDescription: string,
-        model?: AIModel
-    ) => Promise<GeneratedQuestion[]>;
+        jobDescription: string
+    ) => Promise<void>;
     generateAnswer: (
         jobTitle: string,
         question: string,
         questionType: string,
-        difficultyLevel: string,
-        model?: AIModel
-    ) => Promise<GeneratedAnswer>;
-    improveDescription: (
-        jobDescription: string,
-        model?: AIModel
-    ) => Promise<string>;
+        difficultyLevel: string
+    ) => Promise<void>;
+    improveDescription: (jobDescription: string) => Promise<void>;
     generateFollowUpQuestions: (
         originalQuestion: string,
         candidateAnswer: string,
-        jobTitle: string,
-        model?: AIModel
-    ) => Promise<FollowUpQuestion[]>;
+        jobTitle: string
+    ) => Promise<void>;
     clearError: () => void;
-    reset: () => void;
 }
 
-export type UseAI = AIState & AIActions;
-
 // =====================================================
-// Custom Hook Implementation
+// Main AI Hook
 // =====================================================
 
-export function useAI(): UseAI {
+export function useAI(): AIState & AIActions {
     const [state, setState] = useState<AIState>({
         isLoading: false,
         error: null,
-        lastGenerated: null,
+        questions: [],
+        answer: null,
+        followUpQuestions: [],
     });
-
-    // =====================================================
-    // Utility Functions
-    // =====================================================
-
-    const setLoading = useCallback((loading: boolean) => {
-        setState((prev) => ({ ...prev, isLoading: loading }));
-    }, []);
-
-    const setError = useCallback((error: string | null) => {
-        setState((prev) => ({ ...prev, error, isLoading: false }));
-    }, []);
 
     const clearError = useCallback(() => {
         setState((prev) => ({ ...prev, error: null }));
     }, []);
 
-    const reset = useCallback(() => {
-        setState({
-            isLoading: false,
-            error: null,
-            lastGenerated: null,
-        });
-    }, []);
-
-    // =====================================================
-    // AI Generation Functions
-    // =====================================================
-
     const generateQuestions = useCallback(
-        async (
-            jobTitle: string,
-            jobDescription: string,
-            model: AIModel = AI_MODELS.GPT_4_TURBO
-        ): Promise<GeneratedQuestion[]> => {
-            try {
-                setLoading(true);
-                setError(null);
+        async (jobTitle: string, jobDescription: string) => {
+            setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+            try {
                 const response = await fetch('/api/ai/generate-questions', {
                     method: 'POST',
                     headers: {
@@ -114,7 +81,6 @@ export function useAI(): UseAI {
                     body: JSON.stringify({
                         jobTitle,
                         jobDescription,
-                        model,
                     }),
                 });
 
@@ -133,22 +99,20 @@ export function useAI(): UseAI {
                     );
                 }
 
-                const questions = data.data as GeneratedQuestion[];
-
                 setState((prev) => ({
                     ...prev,
+                    questions: data.data,
                     isLoading: false,
-                    lastGenerated: { ...prev.lastGenerated, questions },
                 }));
-
-                return questions;
             } catch (error) {
-                const errorMessage =
-                    error instanceof Error
-                        ? error.message
-                        : 'An unexpected error occurred';
-                setError(errorMessage);
-                throw error;
+                setState((prev) => ({
+                    ...prev,
+                    error:
+                        error instanceof Error
+                            ? error.message
+                            : 'Failed to generate questions',
+                    isLoading: false,
+                }));
             }
         },
         []
@@ -159,13 +123,11 @@ export function useAI(): UseAI {
             jobTitle: string,
             question: string,
             questionType: string,
-            difficultyLevel: string,
-            model: AIModel = AI_MODELS.GPT_4_TURBO
-        ): Promise<GeneratedAnswer> => {
-            try {
-                setLoading(true);
-                setError(null);
+            difficultyLevel: string
+        ) => {
+            setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+            try {
                 const response = await fetch('/api/ai/generate-answer', {
                     method: 'POST',
                     headers: {
@@ -176,7 +138,6 @@ export function useAI(): UseAI {
                         question,
                         questionType,
                         difficultyLevel,
-                        model,
                     }),
                 });
 
@@ -193,98 +154,77 @@ export function useAI(): UseAI {
                     throw new Error(data.error || 'Failed to generate answer');
                 }
 
-                const answer = data.data as GeneratedAnswer;
-
                 setState((prev) => ({
                     ...prev,
+                    answer: data.data,
                     isLoading: false,
-                    lastGenerated: { ...prev.lastGenerated, answer },
                 }));
-
-                return answer;
             } catch (error) {
-                const errorMessage =
-                    error instanceof Error
-                        ? error.message
-                        : 'An unexpected error occurred';
-                setError(errorMessage);
-                throw error;
+                setState((prev) => ({
+                    ...prev,
+                    error:
+                        error instanceof Error
+                            ? error.message
+                            : 'Failed to generate answer',
+                    isLoading: false,
+                }));
             }
         },
         []
     );
 
-    const improveDescription = useCallback(
-        async (
-            jobDescription: string,
-            model: AIModel = AI_MODELS.GPT_4_TURBO
-        ): Promise<string> => {
-            try {
-                setLoading(true);
-                setError(null);
+    const improveDescription = useCallback(async (jobDescription: string) => {
+        setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-                const response = await fetch('/api/ai/improve-description', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        jobDescription,
-                        model,
-                    }),
-                });
+        try {
+            const response = await fetch('/api/ai/improve-description', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jobDescription,
+                }),
+            });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(
-                        errorData.error || 'Failed to improve description'
-                    );
-                }
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.error || 'Failed to improve description'
+                );
+            }
 
-                const data = await response.json();
+            const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(
-                        data.error || 'Failed to improve description'
-                    );
-                }
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to improve description');
+            }
 
-                const improvedDescription = data.data
-                    .improvedDescription as string;
-
-                setState((prev) => ({
-                    ...prev,
-                    isLoading: false,
-                    lastGenerated: {
-                        ...prev.lastGenerated,
-                        improvedDescription,
-                    },
-                }));
-
-                return improvedDescription;
-            } catch (error) {
-                const errorMessage =
+            setState((prev) => ({
+                ...prev,
+                isLoading: false,
+            }));
+        } catch (error) {
+            setState((prev) => ({
+                ...prev,
+                error:
                     error instanceof Error
                         ? error.message
-                        : 'An unexpected error occurred';
-                setError(errorMessage);
-                throw error;
-            }
-        },
-        []
-    );
+                        : 'Failed to improve description',
+                isLoading: false,
+            }));
+        }
+    }, []);
 
     const generateFollowUpQuestions = useCallback(
         async (
             originalQuestion: string,
             candidateAnswer: string,
-            jobTitle: string,
-            model: AIModel = AI_MODELS.GPT_4_TURBO
-        ): Promise<FollowUpQuestion[]> => {
-            try {
-                setLoading(true);
-                setError(null);
+            jobTitle: string
+        ) => {
+            setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+            try {
                 const response = await fetch(
                     '/api/ai/generate-follow-up-questions',
                     {
@@ -296,7 +236,6 @@ export function useAI(): UseAI {
                             originalQuestion,
                             candidateAnswer,
                             jobTitle,
-                            model,
                         }),
                     }
                 );
@@ -317,95 +256,297 @@ export function useAI(): UseAI {
                     );
                 }
 
-                const followUpQuestions = data.data as FollowUpQuestion[];
-
                 setState((prev) => ({
                     ...prev,
+                    followUpQuestions: data.data,
                     isLoading: false,
-                    lastGenerated: { ...prev.lastGenerated, followUpQuestions },
                 }));
-
-                return followUpQuestions;
             } catch (error) {
-                const errorMessage =
-                    error instanceof Error
-                        ? error.message
-                        : 'An unexpected error occurred';
-                setError(errorMessage);
-                throw error;
+                setState((prev) => ({
+                    ...prev,
+                    error:
+                        error instanceof Error
+                            ? error.message
+                            : 'Failed to generate follow-up questions',
+                    isLoading: false,
+                }));
             }
         },
         []
     );
 
-    // =====================================================
-    // Return Hook Interface
-    // =====================================================
-
     return {
-        // State
-        isLoading: state.isLoading,
-        error: state.error,
-        lastGenerated: state.lastGenerated,
-
-        // Actions
+        ...state,
         generateQuestions,
         generateAnswer,
         improveDescription,
         generateFollowUpQuestions,
         clearError,
-        reset,
     };
 }
 
 // =====================================================
-// Specialized Hooks for Specific Use Cases
+// Specialized Hooks
 // =====================================================
 
 export function useQuestionGeneration() {
-    const ai = useAI();
+    const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const generateQuestions = useCallback(
+        async (jobTitle: string, jobDescription: string) => {
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                const response = await fetch('/api/ai/generate-questions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        jobTitle,
+                        jobDescription,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(
+                        errorData.error || 'Failed to generate questions'
+                    );
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(
+                        data.error || 'Failed to generate questions'
+                    );
+                }
+
+                setQuestions(data.data);
+            } catch (error) {
+                setError(
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to generate questions'
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        []
+    );
+
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []);
 
     return {
-        isLoading: ai.isLoading,
-        error: ai.error,
-        questions: ai.lastGenerated?.questions || [],
-        generateQuestions: ai.generateQuestions,
-        clearError: ai.clearError,
+        questions,
+        isLoading,
+        error,
+        generateQuestions,
+        clearError,
     };
 }
 
 export function useAnswerGeneration() {
-    const ai = useAI();
+    const [answer, setAnswer] = useState<GeneratedAnswer | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const generateAnswer = useCallback(
+        async (
+            jobTitle: string,
+            question: string,
+            questionType: string,
+            difficultyLevel: string
+        ) => {
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                const response = await fetch('/api/ai/generate-answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        jobTitle,
+                        question,
+                        questionType,
+                        difficultyLevel,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(
+                        errorData.error || 'Failed to generate answer'
+                    );
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to generate answer');
+                }
+
+                setAnswer(data.data);
+            } catch (error) {
+                setError(
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to generate answer'
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        []
+    );
+
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []);
 
     return {
-        isLoading: ai.isLoading,
-        error: ai.error,
-        answer: ai.lastGenerated?.answer,
-        generateAnswer: ai.generateAnswer,
-        clearError: ai.clearError,
+        answer,
+        isLoading,
+        error,
+        generateAnswer,
+        clearError,
     };
 }
 
 export function useDescriptionImprovement() {
-    const ai = useAI();
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const improveDescription = useCallback(async (jobDescription: string) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const response = await fetch('/api/ai/improve-description', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jobDescription,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.error || 'Failed to improve description'
+                );
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to improve description');
+            }
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to improve description'
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []);
 
     return {
-        isLoading: ai.isLoading,
-        error: ai.error,
-        improvedDescription: ai.lastGenerated?.improvedDescription,
-        improveDescription: ai.improveDescription,
-        clearError: ai.clearError,
+        isLoading,
+        error,
+        improveDescription,
+        clearError,
     };
 }
 
 export function useFollowUpQuestions() {
-    const ai = useAI();
+    const [followUpQuestions, setFollowUpQuestions] = useState<
+        FollowUpQuestion[]
+    >([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const generateFollowUpQuestions = useCallback(
+        async (
+            originalQuestion: string,
+            candidateAnswer: string,
+            jobTitle: string
+        ) => {
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                const response = await fetch(
+                    '/api/ai/generate-follow-up-questions',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            originalQuestion,
+                            candidateAnswer,
+                            jobTitle,
+                        }),
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(
+                        errorData.error ||
+                            'Failed to generate follow-up questions'
+                    );
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(
+                        data.error || 'Failed to generate follow-up questions'
+                    );
+                }
+
+                setFollowUpQuestions(data.data);
+            } catch (error) {
+                setError(
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to generate follow-up questions'
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        []
+    );
+
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []);
 
     return {
-        isLoading: ai.isLoading,
-        error: ai.error,
-        followUpQuestions: ai.lastGenerated?.followUpQuestions || [],
-        generateFollowUpQuestions: ai.generateFollowUpQuestions,
-        clearError: ai.clearError,
+        followUpQuestions,
+        isLoading,
+        error,
+        generateFollowUpQuestions,
+        clearError,
     };
 }

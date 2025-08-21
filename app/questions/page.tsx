@@ -4,7 +4,6 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useQuestionGeneration } from '../../hooks/useAI';
 import { GeneratedQuestion, GeneratedAnswer } from '../../types/openai';
-import AnswerGenerator from '../../components/AnswerGenerator';
 import Link from 'next/link';
 
 export default function QuestionsPage() {
@@ -16,6 +15,7 @@ export default function QuestionsPage() {
     const [answers, setAnswers] = useState<Record<string, GeneratedAnswer>>({});
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false);
+    const [isGeneratingAnswers, setIsGeneratingAnswers] = useState(false);
 
     const {
         isLoading: isGenerating,
@@ -44,6 +44,8 @@ export default function QuestionsPage() {
             setQuestions(generatedQuestions);
             setHasGeneratedQuestions(true);
             setIsInitialLoading(false);
+            // Automatically generate answers for all questions
+            generateAnswersForAllQuestions(generatedQuestions);
         }
     }, [generatedQuestions]);
 
@@ -80,14 +82,69 @@ export default function QuestionsPage() {
         clearError();
     };
 
-    const handleAnswerGenerated = (
-        questionId: string,
-        answer: GeneratedAnswer
+    const generateAnswersForAllQuestions = async (
+        questionsList: GeneratedQuestion[]
     ) => {
-        setAnswers((prev) => ({
-            ...prev,
-            [questionId]: answer,
-        }));
+        if (questionsList.length === 0) return;
+
+        setIsGeneratingAnswers(true);
+        try {
+            // Generate answers for each question using the API
+            const answerPromises = questionsList.map(
+                async (question, index) => {
+                    try {
+                        const response = await fetch(
+                            '/api/ai/generate-answer',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    jobTitle,
+                                    question: question.question,
+                                    questionType: question.question_type,
+                                    difficultyLevel: question.difficulty_level,
+                                }),
+                            }
+                        );
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success && data.data) {
+                                return {
+                                    questionId: `question-${index}`,
+                                    answer: data.data,
+                                };
+                            }
+                        }
+                        return null;
+                    } catch (error) {
+                        console.error(
+                            `Failed to generate answer for question ${index}:`,
+                            error
+                        );
+                        return null;
+                    }
+                }
+            );
+
+            const results = await Promise.all(answerPromises);
+
+            // Update answers state with generated answers
+            const newAnswers: Record<string, GeneratedAnswer> = {};
+            results.forEach((result) => {
+                if (result) {
+                    newAnswers[result.questionId] = result.answer;
+                }
+            });
+
+            setAnswers(newAnswers);
+        } catch (error) {
+            console.error('Failed to generate answers:', error);
+        } finally {
+            setIsGeneratingAnswers(false);
+        }
     };
 
     // =====================================================
@@ -102,6 +159,18 @@ export default function QuestionsPage() {
             </p>
             <p className='text-gray-500 text-sm mt-2'>
                 This may take a few moments
+            </p>
+        </div>
+    );
+
+    const renderGeneratingAnswersState = () => (
+        <div className='flex flex-col items-center justify-center py-16'>
+            <div className='animate-spin rounded-full h-16 w-16 border-b-2 border-primary mb-4'></div>
+            <p className='text-gray-600 text-lg'>
+                Generating sample answers...
+            </p>
+            <p className='text-gray-500 text-sm mt-2'>
+                Creating comprehensive answers for all questions
             </p>
         </div>
     );
@@ -199,103 +268,157 @@ export default function QuestionsPage() {
                     </div>
                 </div>
 
-                {questions.map((question, index) => (
-                    <div
-                        key={index}
-                        className='bg-white rounded-lg border border-gray-200 p-6'
-                    >
-                        {/* Question */}
-                        <div className='mb-4'>
-                            <div className='flex items-start space-x-3'>
-                                <div className='w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0'>
-                                    <svg
-                                        className='w-4 h-4 text-blue-600'
-                                        fill='none'
-                                        stroke='currentColor'
-                                        viewBox='0 0 24 24'
-                                    >
-                                        <path
-                                            strokeLinecap='round'
-                                            strokeLinejoin='round'
-                                            strokeWidth={2}
-                                            d='M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-                                        />
-                                    </svg>
-                                </div>
-                                <div className='flex-1'>
-                                    <div className='bg-blue-50 rounded-lg p-4'>
-                                        <div className='flex items-center justify-between mb-2'>
-                                            <p className='text-gray-900 font-medium'>
-                                                Interviewer
-                                            </p>
-                                            <div className='flex gap-2'>
-                                                <span
-                                                    className={`px-2 py-1 text-xs rounded-full ${
-                                                        question.question_type ===
-                                                        'technical'
-                                                            ? 'bg-blue-100 text-blue-800'
-                                                            : question.question_type ===
-                                                              'behavioral'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : question.question_type ===
-                                                              'situational'
-                                                            ? 'bg-purple-100 text-purple-800'
-                                                            : 'bg-gray-100 text-gray-800'
-                                                    }`}
-                                                >
-                                                    {question.question_type}
-                                                </span>
-                                                <span
-                                                    className={`px-2 py-1 text-xs rounded-full ${
-                                                        question.difficulty_level ===
-                                                        'easy'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : question.difficulty_level ===
-                                                              'medium'
-                                                            ? 'bg-yellow-100 text-yellow-800'
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}
-                                                >
-                                                    {question.difficulty_level}
-                                                </span>
+                {questions.map((question, index) => {
+                    const questionId = `question-${index}`;
+                    const answer = answers[questionId];
+
+                    return (
+                        <div
+                            key={index}
+                            className='bg-white rounded-lg border border-gray-200 p-6'
+                        >
+                            {/* Question */}
+                            <div className='mb-4'>
+                                <div className='flex items-start space-x-3'>
+                                    <div className='w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0'>
+                                        <svg
+                                            className='w-4 h-4 text-blue-600'
+                                            fill='none'
+                                            stroke='currentColor'
+                                            viewBox='0 0 24 24'
+                                        >
+                                            <path
+                                                strokeLinecap='round'
+                                                strokeLinejoin='round'
+                                                strokeWidth={2}
+                                                d='M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                                            />
+                                        </svg>
+                                    </div>
+                                    <div className='flex-1'>
+                                        <div className='bg-blue-50 rounded-lg p-4'>
+                                            <div className='flex items-center justify-between mb-2'>
+                                                <p className='text-gray-900 font-medium'>
+                                                    Interviewer
+                                                </p>
+                                                <div className='flex gap-2'>
+                                                    <span
+                                                        className={`px-2 py-1 text-xs rounded-full ${
+                                                            question.question_type ===
+                                                            'technical'
+                                                                ? 'bg-blue-100 text-blue-800'
+                                                                : question.question_type ===
+                                                                  'behavioral'
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : question.question_type ===
+                                                                  'situational'
+                                                                ? 'bg-purple-100 text-purple-800'
+                                                                : 'bg-gray-100 text-gray-800'
+                                                        }`}
+                                                    >
+                                                        {question.question_type}
+                                                    </span>
+                                                    <span
+                                                        className={`px-2 py-1 text-xs rounded-full ${
+                                                            question.difficulty_level ===
+                                                            'easy'
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : question.difficulty_level ===
+                                                                  'medium'
+                                                                ? 'bg-yellow-100 text-yellow-800'
+                                                                : 'bg-red-100 text-red-800'
+                                                        }`}
+                                                    >
+                                                        {
+                                                            question.difficulty_level
+                                                        }
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <p className='text-gray-700'>
-                                            {question.question}
-                                        </p>
-                                        <div className='mt-3 pt-3 border-t border-blue-200'>
-                                            <p className='text-xs text-gray-600'>
-                                                <span className='font-medium'>
-                                                    Category:
-                                                </span>{' '}
-                                                {question.category}
+                                            <p className='text-gray-700'>
+                                                {question.question}
                                             </p>
-                                            <p className='text-xs text-gray-600 mt-1'>
-                                                {question.explanation}
-                                            </p>
+                                            <div className='mt-3 pt-3 border-t border-blue-200'>
+                                                <p className='text-xs text-gray-600'>
+                                                    <span className='font-medium'>
+                                                        Category:
+                                                    </span>{' '}
+                                                    {question.category}
+                                                </p>
+                                                <p className='text-xs text-gray-600 mt-1'>
+                                                    {question.explanation}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Answer Generator */}
-                        <div className='ml-11'>
-                            <AnswerGenerator
-                                jobTitle={jobTitle}
-                                question={question.question}
-                                questionType={question.question_type}
-                                difficultyLevel={question.difficulty_level}
-                                onAnswerGenerated={(answer) =>
-                                    handleAnswerGenerated(
-                                        `question-${index}`,
-                                        answer
-                                    )
-                                }
-                            />
+                            {/* Answer */}
+                            <div className='ml-11'>
+                                {answer ? (
+                                    <div className='mt-4 p-4 bg-green-50 rounded-lg border border-green-200'>
+                                        <h4 className='font-medium text-green-800 mb-2'>
+                                            Sample Answer
+                                        </h4>
+                                        <div className='prose prose-sm max-w-none'>
+                                            <p className='text-green-700 whitespace-pre-line mb-3'>
+                                                {answer.answer_text}
+                                            </p>
+
+                                            {answer.key_points &&
+                                                answer.key_points.length >
+                                                    0 && (
+                                                    <div className='mb-3'>
+                                                        <h5 className='text-sm font-medium text-green-800 mb-2'>
+                                                            Key Points:
+                                                        </h5>
+                                                        <ul className='list-disc list-inside space-y-1'>
+                                                            {answer.key_points.map(
+                                                                (
+                                                                    point: string,
+                                                                    index: number
+                                                                ) => (
+                                                                    <li
+                                                                        key={
+                                                                            index
+                                                                        }
+                                                                        className='text-sm text-green-700'
+                                                                    >
+                                                                        {point}
+                                                                    </li>
+                                                                )
+                                                            )}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                            {answer.tips && (
+                                                <div className='bg-white rounded p-3 border border-green-200'>
+                                                    <h5 className='text-sm font-medium text-green-800 mb-1'>
+                                                        Tips:
+                                                    </h5>
+                                                    <p className='text-sm text-green-700'>
+                                                        {answer.tips}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className='mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                                        <div className='flex items-center justify-center'>
+                                            <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2'></div>
+                                            <span className='text-sm text-gray-600'>
+                                                Generating answer...
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         );
     };
@@ -345,8 +468,8 @@ export default function QuestionsPage() {
                                 Interview Questions: {jobTitle}
                             </h1>
                             <p className='text-gray-600 mt-1'>
-                                AI-generated questions based on your job
-                                description
+                                AI-generated questions and answers based on your
+                                job description
                             </p>
                         </div>
                         <Link
@@ -393,8 +516,14 @@ export default function QuestionsPage() {
                 {/* Loading State */}
                 {isInitialLoading && renderLoadingState()}
 
+                {/* Generating Answers State */}
+                {!isInitialLoading &&
+                    questions.length > 0 &&
+                    isGeneratingAnswers &&
+                    renderGeneratingAnswersState()}
+
                 {/* Questions Content */}
-                {!isInitialLoading && renderQuestions()}
+                {!isInitialLoading && !isGeneratingAnswers && renderQuestions()}
 
                 {/* Action Buttons */}
                 {renderActionButtons()}
