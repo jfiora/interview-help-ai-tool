@@ -9,6 +9,17 @@ export default function JobDescriptionBox({
     jobDescription,
     onDescriptionChange,
 }: JobDescriptionBoxProps) {
+    // Safety check for server-side rendering
+    if (!jobDescription || !jobDescription.roleSummary) {
+        return (
+            <div className='bg-white rounded-lg border border-gray-200 p-6 mb-6'>
+                <div className='text-center text-gray-500'>
+                    Loading job description...
+                </div>
+            </div>
+        );
+    }
+
     const maxChars = 5000; // Increased character limit for full job descriptions
     const currentChars = jobDescription.roleSummary.length;
     const remainingChars = maxChars - currentChars;
