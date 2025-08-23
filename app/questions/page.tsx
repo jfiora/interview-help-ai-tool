@@ -25,10 +25,15 @@ function QuestionsPageContent() {
         isLoading: isGenerating,
         error,
         generateQuestions,
+        clearQuestions,
         clearError,
     } = useQuestionGeneration();
 
     const { createSession, saveQuestions, saveAnswers } = useSessions();
+
+    // Track total questions generated in this session
+    const [totalQuestionsGenerated, setTotalQuestionsGenerated] = useState(0);
+    const MAX_QUESTIONS = 20;
 
     useEffect(() => {
         if (jobTitle && jobDescription) {
@@ -39,14 +44,36 @@ function QuestionsPageContent() {
     }, [jobTitle, jobDescription]);
 
     useEffect(() => {
-        if (generatedQuestions.length > 0) {
+        if (generatedQuestions.length > 0 && !hasGeneratedQuestions) {
             setQuestions(generatedQuestions);
+            setTotalQuestionsGenerated(generatedQuestions.length);
             setHasGeneratedQuestions(true);
             setIsInitialLoading(false);
             // Automatically generate answers for all questions
             generateAnswersForAllQuestions(generatedQuestions);
         }
-    }, [generatedQuestions]);
+    }, [generatedQuestions, hasGeneratedQuestions]);
+
+    // Handle additional questions being generated
+    useEffect(() => {
+        if (generatedQuestions.length > 0 && hasGeneratedQuestions) {
+            // Calculate how many new questions were added
+            const newQuestionsCount =
+                generatedQuestions.length - questions.length;
+            if (newQuestionsCount > 0) {
+                // Update the questions state with all questions
+                setQuestions(generatedQuestions);
+                // Update total count
+                setTotalQuestionsGenerated((prev) => prev + newQuestionsCount);
+
+                // Generate answers for new questions only
+                const newQuestions = generatedQuestions.slice(
+                    -newQuestionsCount
+                );
+                generateAnswersForAllQuestions(newQuestions);
+            }
+        }
+    }, [generatedQuestions, hasGeneratedQuestions, questions.length]);
 
     const handleGenerateQuestions = async () => {
         try {
@@ -67,6 +94,15 @@ function QuestionsPageContent() {
     const handleGenerateMoreQuestions = async () => {
         try {
             clearError();
+
+            // Check if we've reached the maximum number of questions
+            if (totalQuestionsGenerated >= MAX_QUESTIONS) {
+                alert(
+                    `You've already generated ${MAX_QUESTIONS} questions! This is the maximum allowed per session. Please save your session to preserve all your questions and answers, or start a new session for more questions.`
+                );
+                return;
+            }
+
             await generateQuestions(jobTitle, jobDescription);
         } catch (error) {
             console.error('Failed to generate more questions:', error);
@@ -75,6 +111,28 @@ function QuestionsPageContent() {
 
     const handleClearError = () => {
         clearError();
+    };
+
+    const handleSaveSession = async () => {
+        if (questions.length === 0) {
+            alert(
+                'No questions to save. Please generate some questions first.'
+            );
+            return;
+        }
+
+        if (sessionSaved) {
+            alert('Session already saved!');
+            return;
+        }
+
+        // Generate answers for all questions if not already done
+        if (Object.keys(answers).length === 0) {
+            await generateAnswersForAllQuestions(questions);
+        } else {
+            // Save the current session with existing answers
+            await saveSessionToDatabase(questions, Object.values(answers));
+        }
     };
 
     const generateAnswersForAllQuestions = async (
@@ -333,9 +391,30 @@ function QuestionsPageContent() {
 
                 {/* Interview Questions */}
                 <div className='space-y-6'>
-                    <h2 className='text-xl font-semibold text-gray-900'>
-                        Interview Questions & Sample Answers
-                    </h2>
+                    <div className='flex items-center justify-between'>
+                        <h2 className='text-xl font-semibold text-gray-900'>
+                            Interview Questions & Sample Answers
+                        </h2>
+                        <div className='flex items-center space-x-3'>
+                            <span className='text-sm text-gray-600'>
+                                {totalQuestionsGenerated} of {MAX_QUESTIONS}{' '}
+                                questions generated
+                            </span>
+                            {totalQuestionsGenerated >= MAX_QUESTIONS && (
+                                <span className='bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium'>
+                                    Limit Reached
+                                </span>
+                            )}
+                            {totalQuestionsGenerated >= MAX_QUESTIONS - 5 &&
+                                totalQuestionsGenerated < MAX_QUESTIONS && (
+                                    <span className='bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium'>
+                                        {MAX_QUESTIONS -
+                                            totalQuestionsGenerated}{' '}
+                                        remaining
+                                    </span>
+                                )}
+                        </div>
+                    </div>
 
                     {isInitialLoading || isGenerating ? (
                         renderLoadingState()
@@ -518,21 +597,86 @@ function QuestionsPageContent() {
                 <div className='mt-8 flex justify-center space-x-4'>
                     <button
                         onClick={handleGenerateMoreQuestions}
-                        disabled={isGenerating}
-                        className='bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center'
+                        disabled={
+                            isGenerating ||
+                            totalQuestionsGenerated >= MAX_QUESTIONS
+                        }
+                        className={`font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center ${
+                            totalQuestionsGenerated >= MAX_QUESTIONS
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-primary hover:bg-primary/90 text-white'
+                        }`}
                     >
                         {isGenerating ? (
                             <>
                                 <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3'></div>
                                 Generating...
                             </>
+                        ) : totalQuestionsGenerated >= MAX_QUESTIONS ? (
+                            <>
+                                <svg
+                                    className='w-5 h-5 mr-3'
+                                    fill='none'
+                                    stroke='currentColor'
+                                    viewBox='0 0 24 24'
+                                >
+                                    <path
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                        strokeWidth={2}
+                                        d='M5 13l4 4L19 7'
+                                    />
+                                </svg>
+                                All Questions Generated ({MAX_QUESTIONS}/
+                                {MAX_QUESTIONS})
+                            </>
                         ) : (
-                            'Generate More Questions'
+                            <>
+                                Generate More Questions (
+                                {totalQuestionsGenerated}/{MAX_QUESTIONS})
+                            </>
                         )}
+                    </button>
+                    <button
+                        onClick={handleSaveSession}
+                        className='bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center'
+                    >
+                        <svg
+                            className='w-5 h-5 mr-3'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                        >
+                            <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth={2}
+                                d='M5 13l4 4L19 7'
+                            />
+                        </svg>
+                        Save Session
                     </button>
                     <button className='bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors duration-200'>
                         Download Questions
                     </button>
+                </div>
+
+                {/* Helpful Tips */}
+                <div className='mt-4 text-center'>
+                    <div className='bg-blue-50 border border-blue-200 rounded-md p-3'>
+                        <p className='text-sm text-blue-800'>
+                            💡 <strong>Tip:</strong> You can generate up to{' '}
+                            {MAX_QUESTIONS} questions per session.
+                            {totalQuestionsGenerated >= MAX_QUESTIONS - 5 &&
+                            totalQuestionsGenerated < MAX_QUESTIONS
+                                ? ` You have ${
+                                      MAX_QUESTIONS - totalQuestionsGenerated
+                                  } questions remaining. Consider saving your session soon!`
+                                : totalQuestionsGenerated >= MAX_QUESTIONS
+                                ? " You've reached the limit. Save your session to preserve all questions and answers!"
+                                : ' Save your session anytime to preserve your progress.'}
+                        </p>
+                    </div>
                 </div>
             </div>
         </main>

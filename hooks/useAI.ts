@@ -326,7 +326,11 @@ export function useQuestionGeneration() {
                     );
                 }
 
-                setQuestions(data.data);
+                // Append new questions instead of replacing them
+                setQuestions((prevQuestions) => [
+                    ...prevQuestions,
+                    ...data.data,
+                ]);
             } catch (error) {
                 setError(
                     error instanceof Error
@@ -340,6 +344,10 @@ export function useQuestionGeneration() {
         []
     );
 
+    const clearQuestions = useCallback(() => {
+        setQuestions([]);
+    }, []);
+
     const clearError = useCallback(() => {
         setError(null);
     }, []);
@@ -349,6 +357,7 @@ export function useQuestionGeneration() {
         isLoading,
         error,
         generateQuestions,
+        clearQuestions,
         clearError,
     };
 }
