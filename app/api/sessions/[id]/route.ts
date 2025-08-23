@@ -55,15 +55,18 @@ export async function GET(
         }
 
         // Get session metadata and verify user ownership
-        const { data: sessionMeta, error: metaError } = await supabase
+        const { data: sessionMeta, error: metaError } = (await supabase
             .from('qa_sessions')
             .select('*')
             .eq('id', sessionId)
             .eq('user_id', userId)
-            .single();
+            .single()) as { data: QASession | null; error: any };
 
-        if (metaError) {
-            console.error('Error fetching session metadata:', metaError);
+        if (metaError || !sessionMeta) {
+            console.error(
+                'Error fetching session metadata:',
+                metaError || 'No session data'
+            );
             return NextResponse.json(
                 { error: 'Failed to fetch session metadata' },
                 { status: 500 }
@@ -92,7 +95,7 @@ export async function GET(
 
         // Group questions and answers
         const questionMap = new Map();
-        sessionData.forEach((row) => {
+        sessionData.forEach((row: any) => {
             if (row.question_text) {
                 if (!questionMap.has(row.question_order)) {
                     questionMap.set(row.question_order, {
@@ -116,6 +119,14 @@ export async function GET(
         });
 
         structuredData.questions = Array.from(questionMap.values());
+
+        // Debug logging for LinkedIn profile
+        console.log('Session metadata:', {
+            id: sessionMeta.id,
+            linkedin_profile: sessionMeta.linkedin_profile,
+            linkedin_profile_type: typeof sessionMeta.linkedin_profile,
+            linkedin_profile_length: sessionMeta.linkedin_profile?.length || 0,
+        });
 
         return NextResponse.json({
             success: true,

@@ -19,6 +19,10 @@ function QuestionsPageContent() {
     const [isGeneratingAnswers, setIsGeneratingAnswers] = useState(false);
     const [sessionSaved, setSessionSaved] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [linkedinProfile, setLinkedinProfile] = useState<{
+        linkedinAbout: string;
+        linkedinHeadline: string;
+    } | null>(null);
 
     const {
         questions: generatedQuestions,
@@ -44,14 +48,29 @@ function QuestionsPageContent() {
     }, [jobTitle, jobDescription]);
 
     useEffect(() => {
-        if (generatedQuestions.length > 0 && !hasGeneratedQuestions) {
-            setQuestions(generatedQuestions);
-            setTotalQuestionsGenerated(generatedQuestions.length);
-            setHasGeneratedQuestions(true);
-            setIsInitialLoading(false);
-            // Automatically generate answers for all questions
-            generateAnswersForAllQuestions(generatedQuestions);
-        }
+        const initializeSession = async () => {
+            if (generatedQuestions.length > 0 && !hasGeneratedQuestions) {
+                setQuestions(generatedQuestions);
+                setTotalQuestionsGenerated(generatedQuestions.length);
+                setHasGeneratedQuestions(true);
+                setIsInitialLoading(false);
+
+                // Extract answers from questions that already have them
+                const answersMap: Record<string, GeneratedAnswer> = {};
+                generatedQuestions.forEach((question, index) => {
+                    if (question.answer) {
+                        const questionId = `question-${index}`;
+                        answersMap[questionId] = question.answer;
+                    }
+                });
+                setAnswers(answersMap);
+
+                // Generate LinkedIn profile and wait for it to complete
+                await generateLinkedinProfile();
+            }
+        };
+
+        initializeSession();
     }, [generatedQuestions, hasGeneratedQuestions]);
 
     // Handle additional questions being generated
@@ -132,6 +151,35 @@ function QuestionsPageContent() {
         } else {
             // Save the current session with existing answers
             await saveSessionToDatabase(questions, Object.values(answers));
+        }
+    };
+
+    const generateLinkedinProfile = async () => {
+        if (!jobTitle || !jobDescription) return;
+
+        try {
+            const response = await fetch('/api/ai/generate-linkedin-profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jobTitle,
+                    jobDescription,
+                    userEmail: 'user@example.com', // TODO: Get from user profile
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate LinkedIn profile');
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                setLinkedinProfile(result.data);
+            }
+        } catch (error) {
+            console.error('Failed to generate LinkedIn profile:', error);
         }
     };
 
@@ -218,6 +266,9 @@ function QuestionsPageContent() {
                 job_title: jobTitle,
                 job_description: jobDescription,
                 model_used: 'gpt-4o-mini',
+                linkedin_profile: linkedinProfile
+                    ? JSON.stringify(linkedinProfile)
+                    : null,
             });
 
             if (session) {
@@ -389,6 +440,76 @@ function QuestionsPageContent() {
                     </div>
                 </div>
 
+                {/* LinkedIn Profile Optimization */}
+                <div className='bg-white rounded-lg border border-gray-200 p-6 mb-8'>
+                    <h2 className='text-lg font-semibold text-gray-900 mb-4'>
+                        💼 LinkedIn Profile Optimization
+                    </h2>
+
+                    {linkedinProfile ? (
+                        <div className='space-y-4'>
+                            {/* LinkedIn Headline */}
+                            <div>
+                                <h3 className='text-sm font-medium text-gray-700 mb-2'>
+                                    LinkedIn Headline
+                                </h3>
+                                <div className='bg-blue-50 border border-blue-200 rounded-md p-4'>
+                                    <p className='text-blue-900 font-medium'>
+                                        {linkedinProfile.linkedinHeadline}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* LinkedIn About */}
+                            <div>
+                                <h3 className='text-sm font-medium text-gray-700 mb-2'>
+                                    LinkedIn About Section
+                                </h3>
+                                <div className='bg-green-50 border border-green-200 rounded-md p-4'>
+                                    <p className='text-green-900 whitespace-pre-line'>
+                                        {linkedinProfile.linkedinAbout}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Copy Buttons */}
+                            <div className='flex gap-3 pt-2'>
+                                <button
+                                    onClick={() =>
+                                        navigator.clipboard.writeText(
+                                            linkedinProfile.linkedinHeadline
+                                        )
+                                    }
+                                    className='bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200'
+                                >
+                                    Copy Headline
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        navigator.clipboard.writeText(
+                                            linkedinProfile.linkedinAbout
+                                        )
+                                    }
+                                    className='bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200'
+                                >
+                                    Copy About Section
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className='text-center py-8 text-gray-500'>
+                            <p className='mb-3'>
+                                LinkedIn profile optimization is being generated
+                                automatically...
+                            </p>
+                            <p className='text-sm'>
+                                This will create a professional headline and
+                                about section based on your job description.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
                 {/* Interview Questions */}
                 <div className='space-y-6'>
                     <div className='flex items-center justify-between'>
@@ -457,7 +578,7 @@ function QuestionsPageContent() {
                                                         strokeLinecap='round'
                                                         strokeLinejoin='round'
                                                         strokeWidth={2}
-                                                        d='M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                                                        d='M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0 18 0z'
                                                     />
                                                 </svg>
                                             </div>

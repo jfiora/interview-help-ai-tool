@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Save answers using the database function
-        const { data: answersCount, error } = await supabase.rpc(
+        const { data: answersCount, error } = await (supabase as any).rpc(
             'add_session_answers',
             {
                 p_session_id: session_id,

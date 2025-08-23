@@ -326,11 +326,25 @@ export function useQuestionGeneration() {
                     );
                 }
 
-                // Append new questions instead of replacing them
-                setQuestions((prevQuestions) => [
-                    ...prevQuestions,
-                    ...data.data,
-                ]);
+                // Always append new questions to existing ones
+                setQuestions((prevQuestions) => {
+                    const currentCount = prevQuestions.length;
+                    const newQuestions = data.data;
+
+                    // If we're already at or over the limit, don't add more
+                    if (currentCount >= 20) {
+                        return prevQuestions;
+                    }
+
+                    // Calculate how many questions we can actually add
+                    const availableSlots = 20 - currentCount;
+                    const questionsToAdd = newQuestions.slice(
+                        0,
+                        availableSlots
+                    );
+
+                    return [...prevQuestions, ...questionsToAdd];
+                });
             } catch (error) {
                 setError(
                     error instanceof Error

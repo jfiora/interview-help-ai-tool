@@ -254,6 +254,7 @@ export interface Database {
             qa_sessions: {
                 Row: {
                     id: string;
+                    user_id: string;
                     session_name: string;
                     job_title: string;
                     job_description: string;
@@ -264,6 +265,7 @@ export interface Database {
                     model_used: string;
                     tokens_used: number;
                     estimated_cost: number;
+                    linkedin_profile: string | null;
                 };
                 Insert: Omit<QASession, 'id' | 'created_at' | 'updated_at'>;
                 Update: Partial<
@@ -413,6 +415,8 @@ export interface Database {
                     p_job_title: string;
                     p_job_description: string;
                     p_model_used: string;
+                    p_user_id: string;
+                    p_linkedin_profile?: string | null;
                 };
                 Returns: string;
             };
@@ -586,6 +590,7 @@ export interface CompleteQASession {
     total_answers: number;
     model_used: string;
     estimated_cost: number;
+    linkedin_profile: string | null;
     question_text: string | null;
     question_type: string | null;
     difficulty_level: string | null;
@@ -606,6 +611,7 @@ export interface SessionSummary {
     total_answers: number;
     model_used: string;
     estimated_cost: number;
+    linkedin_profile: string | null;
 }
 
 // =====================================================

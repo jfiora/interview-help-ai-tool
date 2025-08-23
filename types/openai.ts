@@ -8,6 +8,7 @@ export interface GeneratedQuestion {
     difficulty_level: 'easy' | 'medium' | 'hard';
     category: string;
     explanation: string;
+    answer?: GeneratedAnswer;
 }
 
 export interface GeneratedAnswer {

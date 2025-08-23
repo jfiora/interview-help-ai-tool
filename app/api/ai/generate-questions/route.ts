@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-    generateInterviewQuestions,
-    sanitizePromptInput,
-} from '../../../../lib/openai';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(request: NextRequest) {
     try {
-        const { jobTitle, jobDescription, model } = await request.json();
+        const { jobTitle, jobDescription } = await request.json();
 
-        console.log('Received request:', {
-            jobTitle,
-            jobDescription: jobDescription?.substring(0, 100),
-            model,
-        });
-
-        // Validate input
         if (!jobTitle || !jobDescription) {
             return NextResponse.json(
                 { error: 'Job title and description are required' },
@@ -22,49 +16,99 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Sanitize inputs
-        const sanitizedTitle = sanitizePromptInput(jobTitle);
-        const sanitizedDescription = sanitizePromptInput(jobDescription);
+        const prompt = `Generate 5 interview questions for a ${jobTitle} position. For each question, also provide a comprehensive sample answer.
 
-        console.log('Sanitized inputs:', {
-            sanitizedTitle,
-            sanitizedDescription: sanitizedDescription?.substring(0, 100),
+Job Description:
+${jobDescription}
+
+Generate questions in the following JSON format:
+[
+  {
+    "question": "The interview question",
+    "question_type": "technical|behavioral|situational",
+    "difficulty_level": "easy|medium|hard",
+    "category": "relevant category",
+    "explanation": "brief explanation of what this question tests",
+    "answer": {
+      "answer_text": "A comprehensive sample answer that demonstrates expertise",
+      "key_points": ["key point 1", "key point 2", "key point 3"],
+      "tips": "Additional tips for answering this question effectively"
+    }
+  }
+]
+
+Ensure the questions are relevant to the job role and the answers are professional and comprehensive.`;
+
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'You are an expert HR professional and technical interviewer. Generate relevant interview questions with comprehensive sample answers.',
+                },
+                {
+                    role: 'user',
+                    content: prompt,
+                },
+            ],
+            temperature: 0.7,
+            max_tokens: 4000,
         });
 
-        // Generate questions using OpenAI
-        console.log('Calling generateInterviewQuestions...');
-        const questions = await generateInterviewQuestions(
-            sanitizedTitle,
-            sanitizedDescription,
-            model || 'gpt-4o-mini' // Provide default model
-        );
+        const responseText = completion.choices[0]?.message?.content;
+        if (!responseText) {
+            throw new Error('No response from OpenAI');
+        }
 
-        console.log(
-            'Successfully generated questions:',
-            questions?.length || 0
-        );
+        // Try to extract JSON from the response
+        let questions;
+        try {
+            // Find JSON array in the response
+            const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                questions = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('No JSON array found in response');
+            }
+        } catch (parseError) {
+            console.error('Failed to parse OpenAI response:', responseText);
+            throw new Error('Failed to parse generated questions');
+        }
+
+        // Validate the structure
+        if (!Array.isArray(questions)) {
+            throw new Error('Generated content is not an array');
+        }
+
+        // Ensure each question has the required structure
+        const validatedQuestions = questions.map((q, index) => ({
+            question: q.question || `Question ${index + 1}`,
+            question_type: q.question_type || 'behavioral',
+            difficulty_level: q.difficulty_level || 'medium',
+            category: q.category || 'General',
+            explanation: q.explanation || 'Interview question',
+            answer: q.answer || {
+                answer_text: 'Sample answer not generated',
+                key_points: ['Key point 1'],
+                tips: 'Additional tips not available',
+            },
+        }));
 
         return NextResponse.json({
             success: true,
-            data: questions,
-            message: 'Interview questions generated successfully',
+            data: validatedQuestions,
+            message: 'Questions and answers generated successfully',
         });
     } catch (error) {
-        console.error('Error in generate-questions API:', error);
-
-        if (error instanceof Error) {
-            return NextResponse.json(
-                {
-                    error: 'Failed to generate questions',
-                    details: error.message,
-                    stack: error.stack,
-                },
-                { status: 500 }
-            );
-        }
-
+        console.error('Error generating questions:', error);
         return NextResponse.json(
-            { error: 'An unexpected error occurred' },
+            {
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to generate questions',
+            },
             { status: 500 }
         );
     }

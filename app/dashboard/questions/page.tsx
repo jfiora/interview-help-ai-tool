@@ -66,16 +66,29 @@ function QuestionsPageContent() {
     }, [jobTitle, jobDescription, hasGeneratedQuestions]);
 
     useEffect(() => {
-        if (generatedQuestions.length > 0 && !hasGeneratedQuestions) {
-            setQuestions(generatedQuestions);
-            setTotalQuestionsGenerated(generatedQuestions.length);
-            setHasGeneratedQuestions(true);
-            setIsInitialLoading(false);
-            // Automatically generate answers for all questions only once
-            generateAnswersForAllQuestions(generatedQuestions);
-            // Generate LinkedIn profile
-            generateLinkedinProfile();
-        }
+        const initializeSession = async () => {
+            if (generatedQuestions.length > 0 && !hasGeneratedQuestions) {
+                setQuestions(generatedQuestions);
+                setTotalQuestionsGenerated(generatedQuestions.length);
+                setHasGeneratedQuestions(true);
+                setIsInitialLoading(false);
+
+                // Extract answers from questions that already have them
+                const answersMap: Record<string, GeneratedAnswer> = {};
+                generatedQuestions.forEach((question, index) => {
+                    if (question.answer) {
+                        const questionId = `question-${index}`;
+                        answersMap[questionId] = question.answer;
+                    }
+                });
+                setAnswers(answersMap);
+
+                // Generate LinkedIn profile and wait for it to complete
+                await generateLinkedinProfile();
+            }
+        };
+
+        initializeSession();
     }, [generatedQuestions, hasGeneratedQuestions]);
 
     // Handle additional questions being generated
@@ -181,7 +194,12 @@ function QuestionsPageContent() {
 
             const result = await response.json();
             if (result.success) {
+                console.log(
+                    'LinkedIn profile generated successfully:',
+                    result.data
+                );
                 setLinkedinProfile(result.data);
+                console.log('LinkedIn profile state set to:', result.data);
             }
         } catch (error) {
             console.error('Failed to generate LinkedIn profile:', error);
@@ -275,6 +293,15 @@ function QuestionsPageContent() {
 
             // Create session with session key identifier
             const sessionName = `${jobTitle} - ${new Date().toLocaleDateString()}`;
+
+            // Debug: Log the LinkedIn profile state
+            console.log('Saving session with LinkedIn profile:', {
+                linkedinProfile,
+                linkedinProfileType: typeof linkedinProfile,
+                linkedinProfileStringified: linkedinProfile
+                    ? JSON.stringify(linkedinProfile)
+                    : null,
+            });
 
             const session = await createSession({
                 session_name: sessionName,
@@ -640,10 +667,10 @@ function QuestionsPageContent() {
                                     </div>
 
                                     {/* Answer */}
-                                    <div className='p-4'>
-                                        {answer ? (
+                                    {answer ? (
+                                        <div className='p-4'>
                                             <div className='bg-green-50 rounded-lg border border-green-200 p-4'>
-                                                <h4 className='font-medium text-green-800 mb-2 flex items-center'>
+                                                <h4 className='text-sm font-medium text-green-800 mb-2 flex items-center'>
                                                     <CheckCircle className='w-4 h-4 mr-2' />
                                                     Sample Answer
                                                 </h4>
@@ -692,20 +719,51 @@ function QuestionsPageContent() {
                                                     )}
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className='bg-gray-50 rounded-lg border border-gray-200 p-4'>
-                                                <div className='flex items-center justify-center'>
-                                                    <Clock className='w-4 h-4 text-gray-400 mr-2' />
-                                                    <span className='text-sm text-gray-600'>
-                                                        Generating answer...
-                                                    </span>
-                                                </div>
+                                        </div>
+                                    ) : (
+                                        <div className='bg-gray-50 rounded-lg border border-gray-200 p-4'>
+                                            <div className='flex items-center justify-center'>
+                                                <Clock className='w-4 h-4 text-gray-400 mr-2' />
+                                                <span className='text-sm text-gray-600'>
+                                                    Generating answer...
+                                                </span>
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
+
+                        {/* Loading indicator for additional questions */}
+                        {isGenerating && questions.length > 0 && (
+                            <div className='border border-gray-200 rounded-lg overflow-hidden'>
+                                <div className='bg-blue-50 border-b border-blue-200 p-4'>
+                                    <div className='flex items-start space-x-3'>
+                                        <div className='w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0'>
+                                            <span className='text-blue-600 font-medium text-sm'>
+                                                {questions.length + 1}
+                                            </span>
+                                        </div>
+                                        <div className='flex-1'>
+                                            <div className='flex items-center justify-between mb-2'>
+                                                <p className='text-gray-900 font-medium'>
+                                                    Generating...
+                                                </p>
+                                            </div>
+                                            <div className='bg-gray-50 rounded-md p-4'>
+                                                <div className='flex items-center justify-center'>
+                                                    <RefreshCw className='w-4 h-4 text-gray-400 mr-2 animate-spin' />
+                                                    <span className='text-sm text-gray-600'>
+                                                        Generating new
+                                                        question...
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

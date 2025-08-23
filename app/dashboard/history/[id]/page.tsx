@@ -52,6 +52,7 @@ export default function SessionDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [sessionData, setSessionData] = useState<SessionData | null>(null);
+    const [jobDescriptionExpanded, setJobDescriptionExpanded] = useState(false);
 
     useEffect(() => {
         if (sessionId) {
@@ -209,12 +210,48 @@ export default function SessionDetailPage() {
 
             {/* Job Description */}
             <div className='bg-white rounded-lg border border-gray-200 p-6'>
-                <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-                    Job Description
-                </h2>
+                <div className='flex items-center justify-between mb-4'>
+                    <h2 className='text-xl font-semibold text-gray-900'>
+                        Job Description
+                    </h2>
+                    <button
+                        onClick={() =>
+                            setJobDescriptionExpanded(!jobDescriptionExpanded)
+                        }
+                        className='text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center'
+                    >
+                        {jobDescriptionExpanded ? 'Collapse' : 'Expand'}
+                        <svg
+                            className={`w-4 h-4 ml-1 transform transition-transform ${
+                                jobDescriptionExpanded ? 'rotate-180' : ''
+                            }`}
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                        >
+                            <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth={2}
+                                d='M19 9l-7 7-7-7'
+                            />
+                        </svg>
+                    </button>
+                </div>
                 <div className='bg-gray-50 rounded-md p-4'>
-                    <p className='text-gray-700 whitespace-pre-line'>
-                        {session.job_description}
+                    <p
+                        className={`text-gray-700 whitespace-pre-line ${
+                            !jobDescriptionExpanded &&
+                            session.job_description.length > 500
+                                ? 'line-clamp-6'
+                                : ''
+                        }`}
+                    >
+                        {jobDescriptionExpanded
+                            ? session.job_description
+                            : session.job_description.length > 500
+                            ? session.job_description.substring(0, 500) + '...'
+                            : session.job_description}
                     </p>
                 </div>
             </div>
