@@ -39,14 +39,6 @@ export async function POST(request: NextRequest) {
         }
 
         // Create session using the database function with user ID
-        console.log('Creating session with data:', {
-            p_session_name: session_name,
-            p_job_title: job_title,
-            p_job_description: job_description,
-            p_model_used: model_used,
-            p_user_id: userId,
-            p_linkedin_profile: linkedin_profile || null,
-        });
 
         const { data: sessionId, error } = await (supabase as any).rpc(
             'create_qa_session',

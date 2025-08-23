@@ -22,7 +22,6 @@ export default function ProfilePage() {
     const handleSave = () => {
         setIsEditing(false);
         // Here you would typically save to the database
-        console.log('Profile saved:', profile);
     };
 
     const handleCancel = () => {

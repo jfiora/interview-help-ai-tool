@@ -120,14 +120,6 @@ export async function GET(
 
         structuredData.questions = Array.from(questionMap.values());
 
-        // Debug logging for LinkedIn profile
-        console.log('Session metadata:', {
-            id: sessionMeta.id,
-            linkedin_profile: sessionMeta.linkedin_profile,
-            linkedin_profile_type: typeof sessionMeta.linkedin_profile,
-            linkedin_profile_length: sessionMeta.linkedin_profile?.length || 0,
-        });
-
         return NextResponse.json({
             success: true,
             data: structuredData,

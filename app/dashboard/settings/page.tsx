@@ -43,7 +43,6 @@ export default function SettingsPage() {
         // Simulate API call
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setIsSaving(false);
-        console.log('Settings saved:', settings);
     };
 
     const updateSetting = (category: string, key: string, value: any) => {

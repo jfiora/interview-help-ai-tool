@@ -194,12 +194,7 @@ function QuestionsPageContent() {
 
             const result = await response.json();
             if (result.success) {
-                console.log(
-                    'LinkedIn profile generated successfully:',
-                    result.data
-                );
                 setLinkedinProfile(result.data);
-                console.log('LinkedIn profile state set to:', result.data);
             }
         } catch (error) {
             console.error('Failed to generate LinkedIn profile:', error);
@@ -293,15 +288,6 @@ function QuestionsPageContent() {
 
             // Create session with session key identifier
             const sessionName = `${jobTitle} - ${new Date().toLocaleDateString()}`;
-
-            // Debug: Log the LinkedIn profile state
-            console.log('Saving session with LinkedIn profile:', {
-                linkedinProfile,
-                linkedinProfileType: typeof linkedinProfile,
-                linkedinProfileStringified: linkedinProfile
-                    ? JSON.stringify(linkedinProfile)
-                    : null,
-            });
 
             const session = await createSession({
                 session_name: sessionName,

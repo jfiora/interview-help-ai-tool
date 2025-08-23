@@ -53,11 +53,6 @@ export default function SessionDetailPage() {
                 .then((res) => res.json())
                 .then((data) => {
                     if (data.success) {
-                        console.log('Session data:', data.data);
-                        console.log(
-                            'LinkedIn profile:',
-                            data.data.session.linkedin_profile
-                        );
                         setSessionData(data.data);
                     }
                 })
@@ -398,38 +393,16 @@ export default function SessionDetailPage() {
                                     </div>
                                 );
                             } catch (error) {
-                                console.error(
-                                    'Error parsing LinkedIn profile:',
-                                    error
-                                );
-                                console.log(
-                                    'Raw LinkedIn profile data:',
-                                    sessionData.session.linkedin_profile
-                                );
                                 return (
                                     <div className='text-gray-500 text-center py-4'>
                                         <p>
                                             LinkedIn profile data is not
                                             available in the expected format.
                                         </p>
-                                        <p className='text-xs mt-2'>
-                                            Check console for debugging
-                                            information.
-                                        </p>
                                     </div>
                                 );
                             }
                         })()}
-                    </div>
-                )}
-
-                {/* Debug info - remove in production */}
-                {!sessionData.session.linkedin_profile && (
-                    <div className='bg-yellow-50 border border-yellow-200 p-4 mb-8 rounded-md'>
-                        <p className='text-yellow-800 text-sm'>
-                            <strong>Debug:</strong> No LinkedIn profile data
-                            found for this session.
-                        </p>
                     </div>
                 )}
 
