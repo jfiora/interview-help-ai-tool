@@ -16,7 +16,7 @@ function QuestionsPageContent() {
     const [answers, setAnswers] = useState<Record<string, GeneratedAnswer>>({});
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false);
-    const [isGeneratingAnswers, setIsGeneratingAnswers] = useState(false);
+
     const [sessionSaved, setSessionSaved] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [linkedinProfile, setLinkedinProfile] = useState<{
@@ -85,11 +85,26 @@ function QuestionsPageContent() {
                 // Update total count
                 setTotalQuestionsGenerated((prev) => prev + newQuestionsCount);
 
-                // Generate answers for new questions only
+                // Extract answers from new questions that already have them
                 const newQuestions = generatedQuestions.slice(
                     -newQuestionsCount
                 );
-                generateAnswersForAllQuestions(newQuestions);
+                const newAnswers: Record<string, GeneratedAnswer> = {};
+
+                newQuestions.forEach((question, index) => {
+                    if (question.answer) {
+                        const questionId = `question-${
+                            questions.length + index
+                        }`;
+                        newAnswers[questionId] = question.answer;
+                    }
+                });
+
+                // Update answers state with new answers
+                setAnswers((prevAnswers) => ({
+                    ...prevAnswers,
+                    ...newAnswers,
+                }));
             }
         }
     }, [generatedQuestions, hasGeneratedQuestions, questions.length]);
@@ -103,7 +118,7 @@ function QuestionsPageContent() {
                 throw new Error('Job title and description are required');
             }
 
-            await generateQuestions(jobTitle, jobDescription);
+            await generateQuestions(jobTitle, jobDescription, false);
         } catch (error) {
             console.error('Failed to generate questions:', error);
             setIsInitialLoading(false);
@@ -122,7 +137,8 @@ function QuestionsPageContent() {
                 return;
             }
 
-            await generateQuestions(jobTitle, jobDescription);
+            // Generate more questions (this will append to existing ones)
+            await generateQuestions(jobTitle, jobDescription, true);
         } catch (error) {
             console.error('Failed to generate more questions:', error);
         }
@@ -145,13 +161,9 @@ function QuestionsPageContent() {
             return;
         }
 
-        // Generate answers for all questions if not already done
-        if (Object.keys(answers).length === 0) {
-            await generateAnswersForAllQuestions(questions);
-        } else {
-            // Save the current session with existing answers
-            await saveSessionToDatabase(questions, Object.values(answers));
-        }
+        // All questions should already have answers since they're generated together
+        // Just save the current session with existing answers
+        await saveSessionToDatabase(questions, Object.values(answers));
     };
 
     const generateLinkedinProfile = async () => {
@@ -180,77 +192,6 @@ function QuestionsPageContent() {
             }
         } catch (error) {
             console.error('Failed to generate LinkedIn profile:', error);
-        }
-    };
-
-    const generateAnswersForAllQuestions = async (
-        questionsList: GeneratedQuestion[]
-    ) => {
-        if (questionsList.length === 0) return;
-
-        setIsGeneratingAnswers(true);
-        try {
-            // Generate answers for each question using the API
-            const answerPromises = questionsList.map(
-                async (question, index) => {
-                    try {
-                        const response = await fetch(
-                            '/api/ai/generate-answer',
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    jobTitle,
-                                    question: question.question,
-                                    questionType: question.question_type,
-                                    difficultyLevel: question.difficulty_level,
-                                }),
-                            }
-                        );
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            if (data.success && data.data) {
-                                return {
-                                    questionId: `question-${index}`,
-                                    answer: data.data,
-                                };
-                            }
-                        }
-                        return null;
-                    } catch (error) {
-                        console.error(
-                            `Failed to generate answer for question ${index}:`,
-                            error
-                        );
-                        return null;
-                    }
-                }
-            );
-
-            const results = await Promise.all(answerPromises);
-
-            // Update answers state with generated answers
-            const newAnswers: Record<string, GeneratedAnswer> = {};
-            results.forEach((result) => {
-                if (result) {
-                    newAnswers[result.questionId] = result.answer;
-                }
-            });
-
-            setAnswers(newAnswers);
-
-            // Save session to database after generating all answers
-            await saveSessionToDatabase(
-                questionsList,
-                Object.values(newAnswers)
-            );
-        } catch (error) {
-            console.error('Failed to generate answers:', error);
-        } finally {
-            setIsGeneratingAnswers(false);
         }
     };
 
@@ -293,20 +234,8 @@ function QuestionsPageContent() {
             <p className='text-gray-600 text-lg'>
                 Generating interview questions...
             </p>
-            <p className='text-gray-500 text-sm mt-2'>
+            <p className='text-sm text-gray-500 mt-2'>
                 This may take a few moments
-            </p>
-        </div>
-    );
-
-    const renderGeneratingAnswersState = () => (
-        <div className='flex flex-col items-center justify-center py-16'>
-            <div className='animate-spin rounded-full h-16 w-16 border-b-2 border-primary mb-4'></div>
-            <p className='text-gray-600 text-lg'>
-                Generating sample answers...
-            </p>
-            <p className='text-gray-500 text-sm mt-2'>
-                Creating comprehensive answers for all questions
             </p>
         </div>
     );
@@ -537,7 +466,7 @@ function QuestionsPageContent() {
                         </div>
                     </div>
 
-                    {isInitialLoading || isGenerating ? (
+                    {isInitialLoading ? (
                         renderLoadingState()
                     ) : error ? (
                         renderErrorState()

@@ -7,7 +7,12 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
     try {
-        const { jobTitle, jobDescription } = await request.json();
+        const {
+            jobTitle,
+            jobDescription,
+            existingQuestions = [],
+            questionCount = 5,
+        } = await request.json();
 
         if (!jobTitle || !jobDescription) {
             return NextResponse.json(
@@ -16,10 +21,18 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const prompt = `Generate 5 interview questions for a ${jobTitle} position. For each question, also provide a comprehensive sample answer.
+        // Create a context of existing questions to avoid duplicates
+        const existingQuestionsContext =
+            existingQuestions.length > 0
+                ? `\n\nIMPORTANT: The following questions have already been generated. Please generate ${questionCount} COMPLETELY DIFFERENT questions that are not similar to these:\n${existingQuestions
+                      .map((q: any, i: number) => `${i + 1}. ${q.question}`)
+                      .join('\n')}\n\n`
+                : '';
+
+        const prompt = `Generate ${questionCount} interview questions for a ${jobTitle} position. For each question, also provide a comprehensive sample answer.
 
 Job Description:
-${jobDescription}
+${jobDescription}${existingQuestionsContext}
 
 Generate questions in the following JSON format:
 [
@@ -37,7 +50,7 @@ Generate questions in the following JSON format:
   }
 ]
 
-Ensure the questions are relevant to the job role and the answers are professional and comprehensive.`;
+Ensure the questions are relevant to the job role and the answers are professional and comprehensive. Make sure each question is unique and different from the existing ones.`;
 
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -45,14 +58,14 @@ Ensure the questions are relevant to the job role and the answers are profession
                 {
                     role: 'system',
                     content:
-                        'You are an expert HR professional and technical interviewer. Generate relevant interview questions with comprehensive sample answers.',
+                        'You are an expert HR professional and technical interviewer. Generate relevant interview questions with comprehensive sample answers. Always ensure questions are unique and different from any existing ones.',
                 },
                 {
                     role: 'user',
                     content: prompt,
                 },
             ],
-            temperature: 0.7,
+            temperature: 0.8, // Slightly higher temperature for more variety
             max_tokens: 4000,
         });
 

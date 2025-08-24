@@ -295,20 +295,31 @@ export function useQuestionGeneration() {
     const [error, setError] = useState<string | null>(null);
 
     const generateQuestions = useCallback(
-        async (jobTitle: string, jobDescription: string) => {
+        async (
+            jobTitle: string,
+            jobDescription: string,
+            isAdditionalGeneration = false
+        ) => {
             setIsLoading(true);
             setError(null);
 
             try {
+                // If this is additional generation, pass existing questions to avoid duplicates
+                const requestBody = {
+                    jobTitle,
+                    jobDescription,
+                    questionCount: 5,
+                    ...(isAdditionalGeneration && {
+                        existingQuestions: questions,
+                    }),
+                };
+
                 const response = await fetch('/api/ai/generate-questions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        jobTitle,
-                        jobDescription,
-                    }),
+                    body: JSON.stringify(requestBody),
                 });
 
                 if (!response.ok) {
@@ -326,25 +337,29 @@ export function useQuestionGeneration() {
                     );
                 }
 
-                // Always append new questions to existing ones
-                setQuestions((prevQuestions) => {
-                    const currentCount = prevQuestions.length;
-                    const newQuestions = data.data;
+                // If this is additional generation, append to existing questions
+                if (isAdditionalGeneration) {
+                    setQuestions((prevQuestions) => {
+                        const currentCount = prevQuestions.length;
 
-                    // If we're already at or over the limit, don't add more
-                    if (currentCount >= 20) {
-                        return prevQuestions;
-                    }
+                        // If we're already at or over the limit, don't add more
+                        if (currentCount >= 20) {
+                            return prevQuestions;
+                        }
 
-                    // Calculate how many questions we can actually add
-                    const availableSlots = 20 - currentCount;
-                    const questionsToAdd = newQuestions.slice(
-                        0,
-                        availableSlots
-                    );
+                        // Calculate how many questions we can actually add
+                        const availableSlots = 20 - currentCount;
+                        const questionsToAdd = data.data.slice(
+                            0,
+                            availableSlots
+                        );
 
-                    return [...prevQuestions, ...questionsToAdd];
-                });
+                        return [...prevQuestions, ...questionsToAdd];
+                    });
+                } else {
+                    // Initial generation - replace all questions
+                    setQuestions(data.data);
+                }
             } catch (error) {
                 setError(
                     error instanceof Error
@@ -355,7 +370,7 @@ export function useQuestionGeneration() {
                 setIsLoading(false);
             }
         },
-        []
+        [questions]
     );
 
     const clearQuestions = useCallback(() => {
